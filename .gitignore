@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.env
+.venv/
+venv/
+output/*.png
+output/*.jpg
+output/*.svg
+*.pt
+*.safetensors
+.DS_Store

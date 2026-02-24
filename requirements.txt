@@ -1,0 +1,25 @@
+# Image generation backends
+openai>=1.14.0
+diffusers>=0.27.0
+torch>=2.0.0
+transformers>=4.38.0
+accelerate>=0.27.0
+
+# Image processing
+Pillow>=10.2.0
+pillow-heif>=0.15.0
+
+# Diagram & infographic generation
+matplotlib>=3.8.0
+graphviz>=0.20.0
+diagrams>=0.23.0
+
+# CLI & config
+click>=8.1.0
+pydantic>=2.6.0
+python-dotenv>=1.0.0
+rich>=13.7.0
+
+# Optional: API server
+fastapi>=0.110.0
+uvicorn>=0.27.0
