@@ -1,7 +1,7 @@
 /**
  * App.tsx — Layout principal de l'application.
  *
- * Phase 4 : Toolbar + NodeEditor + raccourcis clavier + Ctrl+S export SVG.
+ * Phase 5 : responsive design (mobile=col, tablet+=row), Docker-ready.
  * Layout : TextInput à gauche (1/3) | Toolbar + DiagramCanvas à droite (2/3).
  */
 
@@ -72,24 +72,24 @@ function App() {
           </h1>
         </div>
         <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-          Phase 3 — Interactive
+          MVP — Interactive
         </span>
       </header>
 
       {/* Toolbar (visible seulement si un diagramme existe) */}
       <Toolbar />
 
-      {/* Main content */}
-      <main className="flex flex-1 overflow-hidden">
+      {/* Main content — responsive: col on mobile, row on md+ */}
+      <main className="flex flex-col md:flex-row flex-1 overflow-hidden">
         {/* Panneau gauche — TextInput */}
-        <aside className="w-[380px] min-w-[320px] border-r border-slate-200 bg-slate-50 p-4 overflow-y-auto">
+        <aside className="w-full md:w-[380px] md:min-w-[320px] border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50 p-4 overflow-y-auto">
           <TextInput />
           {/* NodeEditor en dessous du TextInput quand un node est sélectionné */}
           {selectedNodeId && data && <NodeEditor />}
         </aside>
 
         {/* Panneau droit — DiagramCanvas */}
-        <section className="flex-1 p-6 overflow-auto bg-slate-100/50 flex items-center justify-center">
+        <section className="flex-1 p-4 md:p-6 overflow-auto bg-slate-100/50 flex items-center justify-center">
           {data ? (
             <DiagramCanvas />
           ) : (
