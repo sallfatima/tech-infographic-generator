@@ -4,6 +4,8 @@ The complete diagram is shown on every frame. Colored dots/particles travel
 along the arrow paths between nodes to visualize data flow through the system.
 """
 
+from __future__ import annotations
+
 import math
 import time
 from pathlib import Path

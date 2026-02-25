@@ -13,8 +13,14 @@ import type {
   NodePosition,
   LayoutResult,
   Node,
+  GenerateMode,
+  OutputFormat,
+  OutputSize,
+  PipelineSummary,
+  PipelineStatus,
+  ViewMode,
 } from "../types/infographic";
-import { analyzeText } from "../api/client";
+import { analyzeText, generateStandard, generatePro } from "../api/client";
 import { layoutNodes } from "../lib/layoutEngine";
 
 /** Dimensions du canvas par défaut. */
@@ -53,6 +59,44 @@ interface DiagramState {
 
   /** Pan offset pour le canvas. */
   panOffset: { x: number; y: number };
+
+  // ─── Generate / Pipeline ──────────────────────────────────────
+
+  /** Mode de generation : standard (LLM+PIL) ou pro (multi-agent). */
+  generateMode: GenerateMode;
+
+  /** Type d'infographie (null = auto-detect). */
+  infographicType: string | null;
+
+  /** Format de sortie. */
+  outputFormat: OutputFormat;
+
+  /** Taille de sortie. */
+  outputSize: OutputSize;
+
+  /** Statut du pipeline Pro. */
+  pipelineStatus: PipelineStatus;
+
+  /** Resume du pipeline Pro apres generation. */
+  pipelineSummary: PipelineSummary | null;
+
+  /** URL de l'image generee par le backend. */
+  generatedImageUrl: string | null;
+
+  /** Nom du fichier genere. */
+  generatedFilename: string | null;
+
+  /** Temps de generation (secondes). */
+  generationTime: number | null;
+
+  /** Vue active : SVG interactif ou image PIL. */
+  viewMode: ViewMode;
+
+  /** Afficher la vue JSON. */
+  showJsonView: boolean;
+
+  /** Theme sombre pour l'app shell. */
+  darkAppTheme: boolean;
 
   // ─── Actions ────────────────────────────────────────────────────
 
@@ -104,6 +148,19 @@ interface DiagramState {
 
   /** Réinitialise le state. */
   reset: () => void;
+
+  // ─── Generate / Pipeline actions ────────────────────────────────
+
+  setGenerateMode: (mode: GenerateMode) => void;
+  setInfographicType: (type: string | null) => void;
+  setOutputFormat: (format: OutputFormat) => void;
+  setOutputSize: (size: OutputSize) => void;
+  setViewMode: (mode: ViewMode) => void;
+  setShowJsonView: (show: boolean) => void;
+  setDarkAppTheme: (dark: boolean) => void;
+
+  /** Generation complete : analyse LLM + rendu PIL → image URL. */
+  generate: (text: string) => Promise<void>;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -144,6 +201,20 @@ export const useDiagramState = create<DiagramState>()(
       layoutMode: "auto" as const,
       zoom: 1,
       panOffset: { x: 0, y: 0 },
+
+      // Generate / Pipeline defaults
+      generateMode: "standard" as GenerateMode,
+      infographicType: null,
+      outputFormat: "png" as OutputFormat,
+      outputSize: "1400x900" as OutputSize,
+      pipelineStatus: "idle" as PipelineStatus,
+      pipelineSummary: null,
+      generatedImageUrl: null,
+      generatedFilename: null,
+      generationTime: null,
+      viewMode: "svg" as ViewMode,
+      showJsonView: false,
+      darkAppTheme: false,
 
       setInputText: (text) => set({ inputText: text }),
 
@@ -286,7 +357,113 @@ export const useDiagramState = create<DiagramState>()(
           selectedNodeId: null,
           zoom: 1,
           panOffset: { x: 0, y: 0 },
+          pipelineStatus: "idle" as PipelineStatus,
+          pipelineSummary: null,
+          generatedImageUrl: null,
+          generatedFilename: null,
+          generationTime: null,
         }),
+
+      // ─── Generate / Pipeline actions ──────────────────────────────
+
+      setGenerateMode: (mode) => set({ generateMode: mode }),
+      setInfographicType: (type) => set({ infographicType: type }),
+      setOutputFormat: (format) => set({ outputFormat: format }),
+      setOutputSize: (size) => set({ outputSize: size }),
+      setViewMode: (mode) => set({ viewMode: mode }),
+      setShowJsonView: (show) => set({ showJsonView: show }),
+      setDarkAppTheme: (dark) => set({ darkAppTheme: dark }),
+
+      generate: async (text) => {
+        const {
+          generateMode,
+          infographicType,
+          outputFormat,
+          outputSize,
+          themeName,
+        } = get();
+
+        // Parse outputSize → width/height
+        const [w, h] = outputSize.split("x").map(Number);
+        const width = w ?? CANVAS_W;
+        const height = h ?? CANVAS_H;
+
+        set({
+          isLoading: true,
+          error: null,
+          generatedImageUrl: null,
+          generatedFilename: null,
+          generationTime: null,
+          pipelineStatus: generateMode === "pro" ? "researching" : "idle",
+          pipelineSummary: null,
+        });
+
+        try {
+          if (generateMode === "pro") {
+            // Mode Pro : pipeline multi-agent
+            set({ pipelineStatus: "researching" });
+            const result = await generatePro({
+              text,
+              infographic_type: infographicType ?? undefined,
+              theme: themeName,
+              width,
+              height,
+              format: outputFormat,
+              enable_research: true,
+            });
+
+            const data = result.infographic_data;
+            const posMap = layoutNodes(data, CANVAS_W, CANVAS_H);
+
+            set({
+              data,
+              isLoading: false,
+              inputText: text,
+              positions: layoutResultToRecord(posMap),
+              selectedNodeId: null,
+              generatedImageUrl: result.image_url,
+              generatedFilename: result.filename,
+              generationTime: result.generation_time,
+              pipelineStatus: "completed",
+              pipelineSummary: result.pipeline_summary,
+              viewMode: "image",
+            });
+          } else {
+            // Mode Standard : LLM + PIL render
+            const result = await generateStandard({
+              text,
+              infographic_type: infographicType ?? undefined,
+              theme: themeName,
+              width,
+              height,
+              format: outputFormat,
+            });
+
+            const data = result.infographic_data;
+            const posMap = layoutNodes(data, CANVAS_W, CANVAS_H);
+
+            set({
+              data,
+              isLoading: false,
+              inputText: text,
+              positions: layoutResultToRecord(posMap),
+              selectedNodeId: null,
+              generatedImageUrl: result.image_url,
+              generatedFilename: result.filename,
+              generationTime: result.generation_time,
+              pipelineStatus: "completed",
+              viewMode: "image",
+            });
+          }
+        } catch (e) {
+          const message = e instanceof Error ? e.message : "Erreur inconnue";
+          set({
+            isLoading: false,
+            error: message,
+            pipelineStatus: "failed",
+          });
+        }
+      },
     }),
     {
       partialize: (state) => {

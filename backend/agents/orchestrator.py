@@ -11,6 +11,8 @@ Features:
 - Timing and error tracking via PipelineContext
 """
 
+from __future__ import annotations
+
 import time
 
 from .context import PipelineContext, PipelineStage

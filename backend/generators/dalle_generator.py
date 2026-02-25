@@ -1,5 +1,7 @@
 """DALL-E image generation backend using OpenAI API."""
 
+from __future__ import annotations
+
 import os
 import time
 from pathlib import Path

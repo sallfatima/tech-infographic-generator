@@ -14,18 +14,29 @@ Routes :
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Charger les variables d'environnement depuis .env (racine du projet)
+project_root = str(Path(__file__).parent.parent)
+load_dotenv(Path(project_root) / ".env")
+
 # Assure que le parent de backend/ est dans sys.path
 # pour que les imports `backend.xxx` fonctionnent quand lancé depuis backend/
-project_root = str(Path(__file__).parent.parent)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+from fastapi.staticfiles import StaticFiles
+
 from backend.api.analyze import router as analyze_router
 from backend.api.export import router as export_router
+from backend.api.generate import router as generate_router
 from backend.renderer.themes import THEMES
+
+# Dossier de sortie pour les images generees (partage avec generate.py)
+OUTPUT_DIR = Path(__file__).parent.parent / "output"
+OUTPUT_DIR.mkdir(exist_ok=True)
 
 app = FastAPI(
     title="Tech Infographic Generator",
@@ -49,6 +60,10 @@ app.add_middleware(
 # Enregistre les routers API
 app.include_router(analyze_router, prefix="/api")
 app.include_router(export_router, prefix="/api")
+app.include_router(generate_router, prefix="/api")
+
+# Servir les images generees (PNG/GIF) depuis /output/
+app.mount("/output", StaticFiles(directory=str(OUTPUT_DIR)), name="output")
 
 
 @app.get("/api/health")

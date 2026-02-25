@@ -1,5 +1,7 @@
 """Base class for all image generators."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from pathlib import Path
 from dataclasses import dataclass

@@ -1,47 +1,47 @@
-"""FastAPI web application for the tech infographic generator."""
+"""POST /api/generate et /api/generate-pro — Analyse + rendu en une seule requete.
+
+/api/generate     : Mode Standard — LLM analyze + PIL render → image URL
+/api/generate-pro : Mode Pro — Pipeline multi-agent (Research → Structure → Render)
+"""
 
 from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Optional
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ..analyzer.llm_analyzer import LLMAnalyzer
 from ..renderer.engine import ProRenderer
 from ..renderer.animator import InfographicAnimator
-from ..renderer.themes import list_themes, THEMES
-from ..models.infographic import InfographicData
 from ..agents import InfographicPipeline, PipelineContext
 
-app = FastAPI(title="Tech Infographic Generator", version="2.0")
+router = APIRouter()
 
-# Serve static assets
-WEB_DIR = Path(__file__).parent.parent / "web"
+# Dossier de sortie pour les images generees
 OUTPUT_DIR = Path(__file__).parent.parent.parent / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-app.mount("/static", StaticFiles(directory=str(WEB_DIR / "static")), name="static")
-app.mount("/output", StaticFiles(directory=str(OUTPUT_DIR)), name="output")
 
+# --- Request / Response models ---
 
-# --- Request/Response models ---
 
 class GenerateRequest(BaseModel):
+    """Corps de la requete /api/generate."""
+
     text: str
     infographic_type: str | None = None
     theme: str = "whiteboard"
     width: int = 1400
     height: int = 900
-    format: str = "png"  # "png" or "gif"
+    format: str = "png"
     frame_duration: int = 500
 
 
 class GenerateResponse(BaseModel):
+    """Reponse /api/generate — image URL + metadata."""
+
     image_url: str
     filename: str
     infographic_data: dict
@@ -49,46 +49,30 @@ class GenerateResponse(BaseModel):
     format: str
 
 
-class AnalyzeResponse(BaseModel):
-    data: dict
-    analysis_time: float
+class ProGenerateRequest(GenerateRequest):
+    """Corps de la requete /api/generate-pro — options pipeline."""
 
-
-class ProGenerateRequest(BaseModel):
-    """Request model for the multi-agent Pro pipeline."""
-    text: str
-    infographic_type: str | None = None
-    theme: str = "guidebook"
-    width: int = 1400
-    height: int = 900
-    format: str = "png"
-    frame_duration: int = 500
     enable_research: bool = True
     enable_quality_check: bool = False
 
 
-class ProGenerateResponse(BaseModel):
-    """Response model for the multi-agent Pro pipeline."""
-    image_url: str
-    filename: str
-    infographic_data: dict
-    generation_time: float
-    format: str
+class ProGenerateResponse(GenerateResponse):
+    """Reponse /api/generate-pro — avec resume pipeline."""
+
     pipeline_summary: dict
 
 
 # --- Routes ---
 
-@app.get("/", response_class=HTMLResponse)
-async def index():
-    """Serve the main frontend page."""
-    html_path = WEB_DIR / "index.html"
-    return HTMLResponse(html_path.read_text())
 
-
-@app.post("/api/generate", response_model=GenerateResponse)
+@router.post("/generate", response_model=GenerateResponse)
 async def generate(request: GenerateRequest):
-    """Analyze text with LLM and render an infographic."""
+    """Mode Standard : Analyse LLM + rendu PIL en une seule etape.
+
+    1. LLMAnalyzer.analyze(text) → InfographicData JSON
+    2. ProRenderer.render(data) → PNG ou InfographicAnimator → GIF
+    3. Retourne l'URL de l'image generee
+    """
     start = time.time()
 
     try:
@@ -108,7 +92,6 @@ async def generate(request: GenerateRequest):
                 height=request.height,
                 frame_duration=request.frame_duration,
             )
-            filename = output_path.name
         else:
             renderer = ProRenderer(request.theme)
             output_path = renderer.render(
@@ -116,8 +99,8 @@ async def generate(request: GenerateRequest):
                 width=request.width,
                 height=request.height,
             )
-            filename = output_path.name
 
+        filename = output_path.name
         elapsed = time.time() - start
 
         return GenerateResponse(
@@ -132,33 +115,14 @@ async def generate(request: GenerateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/analyze", response_model=AnalyzeResponse)
-async def analyze_only(request: GenerateRequest):
-    """Analyze text and return structured JSON without rendering."""
-    start = time.time()
-
-    try:
-        analyzer = LLMAnalyzer()
-        data = await analyzer.analyze(request.text, request.infographic_type)
-        elapsed = time.time() - start
-
-        return AnalyzeResponse(
-            data=data.model_dump(),
-            analysis_time=round(elapsed, 2),
-        )
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/api/generate-pro", response_model=ProGenerateResponse)
+@router.post("/generate-pro", response_model=ProGenerateResponse)
 async def generate_pro(request: ProGenerateRequest):
-    """Generate infographic using the multi-agent Pro pipeline.
+    """Mode Pro : Pipeline multi-agent (Research → Structure → Render).
 
-    Pipeline: Research Agent → Structure Agent → Render Agent
-    - Research Agent searches for visual references (non-critical, skipped if no API key)
-    - Structure Agent converts text + research into structured JSON
-    - Render Agent produces the final image
+    1. Research Agent : recherche de references visuelles (optionnel)
+    2. Structure Agent : texte + research → InfographicData JSON
+    3. Render Agent : InfographicData → image PNG/GIF
+    4. Retourne l'image + resume du pipeline
     """
     try:
         # Build pipeline context
@@ -194,12 +158,3 @@ async def generate_pro(request: ProGenerateRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/api/themes")
-async def get_themes():
-    """Return available color themes."""
-    return {
-        name: {"name": t["name"], "bg": t["bg"], "accent": t["accent"], "accent2": t["accent2"]}
-        for name, t in THEMES.items()
-    }

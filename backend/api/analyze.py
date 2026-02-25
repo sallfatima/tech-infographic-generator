@@ -1,5 +1,7 @@
 """POST /api/analyze — Analyse texte brut → InfographicData JSON via LLM."""
 
+from __future__ import annotations
+
 import time
 
 from fastapi import APIRouter, HTTPException

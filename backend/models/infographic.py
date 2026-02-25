@@ -4,6 +4,8 @@ These models form the contract between the LLM analyzer (which produces them)
 and the rendering engine (which consumes them).
 """
 
+from __future__ import annotations
+
 from enum import Enum
 from typing import Optional
 

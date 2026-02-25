@@ -4,6 +4,8 @@ Uses Manhattan routing (orthogonal paths) for clean architecture diagrams.
 Arrows go vertical then horizontal (or vice versa) to avoid crossing nodes.
 """
 
+from __future__ import annotations
+
 import math
 
 from PIL import Image, ImageDraw

@@ -4,6 +4,8 @@ The PipelineContext is the shared state object passed between all agents.
 Each agent reads from it and writes its output back to it.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional

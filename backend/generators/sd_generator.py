@@ -1,5 +1,7 @@
 """Stable Diffusion image generation backend using HuggingFace diffusers."""
 
+from __future__ import annotations
+
 import os
 import time
 from pathlib import Path

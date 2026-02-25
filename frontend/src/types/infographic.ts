@@ -155,5 +155,52 @@ export interface NodePosition {
   h: number;
 }
 
-/** Map nodeId → position calculée par le layout engine. */
+/** Map nodeId → position calculee par le layout engine. */
 export type LayoutResult = Map<string, NodePosition>;
+
+// ─── Generate / Pipeline types ─────────────────────────────────────
+
+export type GenerateMode = "standard" | "pro";
+export type OutputFormat = "png" | "gif";
+export type OutputSize = "1400x900" | "1200x800" | "1080x1080" | "1080x1920";
+
+export interface PipelineStep {
+  name: string;
+  duration: number;
+  status: "completed" | "failed" | "skipped";
+}
+
+export interface PipelineSummary {
+  pipeline_steps: PipelineStep[];
+  total_time: number;
+  errors: string[];
+  warnings: string[];
+  research_summary?: {
+    topic: string;
+    keywords: string[];
+    references_found: number;
+    suggested_type?: string;
+  };
+}
+
+export interface GenerateResponse {
+  image_url: string;
+  filename: string;
+  infographic_data: InfographicData;
+  generation_time: number;
+  format: string;
+}
+
+export interface ProGenerateResponse extends GenerateResponse {
+  pipeline_summary: PipelineSummary;
+}
+
+export type ViewMode = "svg" | "image";
+
+export type PipelineStatus =
+  | "idle"
+  | "researching"
+  | "structuring"
+  | "rendering"
+  | "completed"
+  | "failed";

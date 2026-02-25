@@ -6,6 +6,8 @@ All agents inherit from BaseAgent and get:
 - Logging and error handling
 """
 
+from __future__ import annotations
+
 import json
 import os
 import re

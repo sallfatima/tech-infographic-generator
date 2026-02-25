@@ -1,5 +1,7 @@
 """Gradient rendering for backgrounds and shapes."""
 
+from __future__ import annotations
+
 import math
 
 from PIL import Image, ImageDraw

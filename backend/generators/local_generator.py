@@ -4,6 +4,8 @@ No API key required. Generates structured infographic-style images
 from text descriptions using layout templates.
 """
 
+from __future__ import annotations
+
 import math
 import time
 from pathlib import Path

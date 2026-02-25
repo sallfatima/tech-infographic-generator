@@ -1,5 +1,7 @@
 """LLM-powered text analyzer that converts free text to InfographicData."""
 
+from __future__ import annotations
+
 import json
 import os
 import re

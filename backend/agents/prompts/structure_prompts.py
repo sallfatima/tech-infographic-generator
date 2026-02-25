@@ -5,6 +5,8 @@ structured InfographicData JSON. Its system prompt is based on
 the original analyzer/prompts.py with research context injection.
 """
 
+from __future__ import annotations
+
 from ...models.infographic import InfographicData
 
 # Same core prompt as analyzer/prompts.py — the full system prompt with

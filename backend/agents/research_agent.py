@@ -10,6 +10,8 @@ Uses Serper.dev for Google Image search.
 This agent is NON-CRITICAL: if it fails, the pipeline continues with defaults.
 """
 
+from __future__ import annotations
+
 import time
 
 from .base import BaseAgent

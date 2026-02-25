@@ -5,7 +5,11 @@
  * En prod, les requêtes vont directement au même domaine.
  */
 
-import type { InfographicData } from "../types/infographic";
+import type {
+  InfographicData,
+  GenerateResponse,
+  ProGenerateResponse,
+} from "../types/infographic";
 
 const API_BASE = "/api";
 
@@ -106,4 +110,69 @@ export async function exportGif(
   }
 
   return res.blob();
+}
+
+// ─── Generate Standard ───────────────────────────────────────────────
+
+export interface GenerateParams {
+  text: string;
+  infographic_type?: string;
+  theme?: string;
+  width?: number;
+  height?: number;
+  format?: "png" | "gif";
+  frame_duration?: number;
+}
+
+/**
+ * Mode Standard : Analyse LLM + rendu PIL en une seule requete.
+ * Retourne l'URL de l'image generee + InfographicData.
+ */
+export async function generateStandard(
+  params: GenerateParams,
+): Promise<GenerateResponse> {
+  const res = await fetch(`${API_BASE}/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(
+      (err as { detail?: string }).detail ?? "Erreur generation standard",
+    );
+  }
+
+  return (await res.json()) as GenerateResponse;
+}
+
+// ─── Generate Pro (Multi-Agent) ──────────────────────────────────────
+
+export interface ProGenerateParams extends GenerateParams {
+  enable_research?: boolean;
+  enable_quality_check?: boolean;
+}
+
+/**
+ * Mode Pro : Pipeline multi-agent (Research → Structure → Render).
+ * Retourne l'URL de l'image + resume pipeline.
+ */
+export async function generatePro(
+  params: ProGenerateParams,
+): Promise<ProGenerateResponse> {
+  const res = await fetch(`${API_BASE}/generate-pro`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(
+      (err as { detail?: string }).detail ?? "Erreur generation pro",
+    );
+  }
+
+  return (await res.json()) as ProGenerateResponse;
 }

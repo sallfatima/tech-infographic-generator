@@ -1,5 +1,7 @@
 """Font management and text rendering utilities."""
 
+from __future__ import annotations
+
 from pathlib import Path
 from functools import lru_cache
 
