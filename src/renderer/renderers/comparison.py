@@ -16,6 +16,7 @@ from ..shapes import (
 )
 from ..gradients import draw_gradient_bar, draw_gradient_rect
 from ..icons import paste_icon
+from ..typography import wrap_text
 
 
 def render_comparison(
@@ -135,16 +136,29 @@ def _render_guidebook(
             font=header_font,
         )
 
-        # Render items in column body
+        # Render items in column body — content-adaptive heights
         item_y = col_top + band_h + 18
         label_font = get_font(14, "bold")
         item_font = get_font(12, "regular")
+        item_line_h = int(12 * 1.4)
+        n_items = len(nodes)
+        available_col_h = col_bottom - item_y - 10
+        item_gap = 8
 
         for ni, node in enumerate(nodes):
-            # Item card with pastel fill and accent bar
-            item_h = 60
+            # Measure needed height based on description
+            base_item_h = 38  # label + padding
             if node.description:
-                item_h = 82
+                desc_lines = wrap_text(draw, node.description, item_font, col_w - 48)
+                desc_h = len(desc_lines) * item_line_h + 6
+                item_h = base_item_h + desc_h
+            else:
+                item_h = base_item_h + 12
+
+            # Clamp to available space
+            remaining_items = n_items - ni
+            max_item_h = (available_col_h - (remaining_items - 1) * item_gap) // max(remaining_items, 1)
+            item_h = min(item_h, max(max_item_h, 50))
 
             # Pastel card background
             draw.rounded_rectangle(
@@ -176,16 +190,20 @@ def _render_guidebook(
             )
 
             if node.description:
+                desc_top = item_y + 30
+                remaining_h = (item_y + item_h - 6) - desc_top
+                available_lines = max(1, remaining_h // item_line_h)
                 draw_text_block(
                     draw, node.description,
-                    (col_x + 24, item_y + 30),
+                    (col_x + 24, desc_top),
                     item_font,
                     hex_to_rgb(theme["text_muted"]),
                     col_w - 48,
-                    max_lines=3,
+                    max_lines=available_lines,
                 )
 
-            item_y += item_h + 8
+            item_y += item_h + item_gap
+            available_col_h -= (item_h + item_gap)
 
     # Footer
     if data.footer:
@@ -284,16 +302,29 @@ def _render_whiteboard(
             border_width=2,
         )
 
-        # Render items in column
+        # Render items in column — content-adaptive heights
         item_y = col_top + 35
         label_font = get_font(15, "bold")
         item_font = get_font(13, "regular")
+        item_line_h = int(13 * 1.4)
+        n_items = len(nodes)
+        available_col_h = col_bottom - item_y - 10
+        item_gap = 10
 
         for ni, node in enumerate(nodes):
-            # Item card (white with colored left accent)
-            item_h = 70
+            # Measure needed height based on description
+            base_item_h = 42  # label + padding
             if node.description:
-                item_h = 90
+                desc_lines = wrap_text(draw, node.description, item_font, col_w - 52)
+                desc_h = len(desc_lines) * item_line_h + 6
+                item_h = base_item_h + desc_h
+            else:
+                item_h = base_item_h + 16
+
+            # Clamp to available space
+            remaining_items = n_items - ni
+            max_item_h = (available_col_h - (remaining_items - 1) * item_gap) // max(remaining_items, 1)
+            item_h = min(item_h, max(max_item_h, 50))
 
             draw.rounded_rectangle(
                 (col_x + 12, item_y, col_x + col_w - 12, item_y + item_h),
@@ -324,16 +355,20 @@ def _render_whiteboard(
             )
 
             if node.description:
+                desc_top = item_y + 35
+                remaining_h = (item_y + item_h - 6) - desc_top
+                available_lines = max(1, remaining_h // item_line_h)
                 draw_text_block(
                     draw, node.description,
-                    (col_x + 28, item_y + 35),
+                    (col_x + 28, desc_top),
                     item_font,
                     hex_to_rgb(theme["text_muted"]),
                     col_w - 52,
-                    max_lines=3,
+                    max_lines=available_lines,
                 )
 
-            item_y += item_h + 10
+            item_y += item_h + item_gap
+            available_col_h -= (item_h + item_gap)
 
     return img
 
@@ -418,10 +453,12 @@ def _render_dark(
             theme["border"],
         )
 
-        # Render items in column
+        # Render items in column — content-adaptive
         item_y = body_top + 15
         item_font = get_font(14, "regular")
         label_font = get_font(15, "bold")
+        item_line_h = int(14 * 1.4)
+        available_col_h = (height - 40) - item_y - 10
 
         for node in nodes:
             # Icon
@@ -439,17 +476,21 @@ def _render_dark(
 
             if node.description:
                 desc_y = item_y + 22
+                remaining_h = min(available_col_h - 30, 120)
+                available_lines = max(1, remaining_h // item_line_h)
                 used_h = draw_text_block(
                     draw, node.description,
                     (col_x + 15, desc_y),
                     item_font,
                     hex_to_rgb(theme["text_muted"]),
                     col_w - 30,
-                    max_lines=3,
+                    max_lines=available_lines,
                 )
                 item_y = desc_y + used_h + 15
             else:
                 item_y += 35
+
+            available_col_h = (height - 40) - item_y
 
             # Separator line
             draw.line(

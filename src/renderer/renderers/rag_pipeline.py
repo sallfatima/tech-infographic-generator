@@ -22,6 +22,7 @@ from ..shapes import (
 from ..arrows import draw_straight_arrow, draw_numbered_arrow
 from ..gradients import draw_gradient_bar
 from ..icons import paste_icon
+from ..layout import measure_content_heights
 
 
 def render_rag_pipeline(
@@ -224,11 +225,17 @@ def _render_whiteboard(
         {"fill": "#E3F2FD", "border": "#2B7DE9", "text": "#1565C0"},
     ])
 
-    # Pipeline layout (single row, left to right)
+    # Pipeline layout (single row, left to right) — content-aware height
     arrow_gap = 50
     usable_w = width - margin * 2
     stage_w = (usable_w - (n - 1) * arrow_gap) // n
-    stage_h = height - header_h - margin - 30
+
+    content_heights = measure_content_heights(
+        data.nodes, stage_w, is_header_style=False, is_pipeline=True, min_h=80, max_h=350,
+    )
+    stage_h = max(content_heights.values())
+    max_available = height - header_h - margin - 30
+    stage_h = min(stage_h, max_available)
     cy = header_h + stage_h // 2 + 15
 
     for i, node in enumerate(data.nodes):
@@ -251,19 +258,33 @@ def _render_whiteboard(
         else:
             icon_y += 15
 
+        # Label — adaptive font
+        max_label_w = stage_w - 24
         label_font = get_font(16, "bold")
-        lw, _ = text_size(draw, node.label, label_font)
+        for fs in range(16, 10, -1):
+            label_font = get_font(fs, "bold")
+            lw, _ = text_size(draw, node.label, label_font)
+            if lw <= max_label_w:
+                break
+        display_label = node.label
+        lw, _ = text_size(draw, display_label, label_font)
         draw.text(
             (sx + (stage_w - lw) // 2, icon_y),
-            node.label[:22], fill=hex_to_rgb(theme["text"]), font=label_font,
+            display_label, fill=hex_to_rgb(theme["text"]), font=label_font,
         )
 
+        # Description — dynamic max_lines
         if node.description:
-            desc_font = get_font(11, "regular")
+            desc_top = icon_y + 28
+            remaining_h = (sy + stage_h - 8) - desc_top
+            desc_fs = min(11, max(9, stage_w // 25))
+            desc_font = get_font(desc_fs, "regular")
+            line_h = int(desc_fs * 1.4)
+            available_lines = max(1, remaining_h // line_h)
             draw_text_block(
                 draw, node.description,
-                (sx + 12, icon_y + 28), desc_font,
-                hex_to_rgb(theme["text_muted"]), stage_w - 24, max_lines=4, align="center",
+                (sx + 12, desc_top), desc_font,
+                hex_to_rgb(theme["text_muted"]), stage_w - 24, max_lines=available_lines, align="center",
             )
 
         if i < n - 1:
@@ -315,7 +336,14 @@ def _render_dark(
     arrow_gap = 45
     usable_w = width - margin * 2
     stage_w = (usable_w - (n - 1) * arrow_gap) // n
-    stage_h = height - header_h - margin - 40
+
+    # Content-aware height
+    content_heights = measure_content_heights(
+        data.nodes, stage_w, is_header_style=False, is_pipeline=True, min_h=80, max_h=350,
+    )
+    stage_h = max(content_heights.values())
+    max_available = height - header_h - margin - 40
+    stage_h = min(stage_h, max_available)
     cy = header_h + stage_h // 2 + 20
 
     node_colors = theme.get("node_colors", [theme["accent"]])
@@ -340,16 +368,30 @@ def _render_dark(
         else:
             icon_y += 10
 
+        # Label — adaptive font
+        max_label_w = stage_w - 20
         label_font = get_font(15, "bold")
-        lw, _ = text_size(draw, node.label, label_font)
-        draw.text((sx + (stage_w - lw) // 2, icon_y), node.label[:20], fill=hex_to_rgb(theme["text"]), font=label_font)
+        for fs in range(15, 10, -1):
+            label_font = get_font(fs, "bold")
+            lw, _ = text_size(draw, node.label, label_font)
+            if lw <= max_label_w:
+                break
+        display_label = node.label
+        lw, _ = text_size(draw, display_label, label_font)
+        draw.text((sx + (stage_w - lw) // 2, icon_y), display_label, fill=hex_to_rgb(theme["text"]), font=label_font)
 
+        # Description — dynamic max_lines
         if node.description:
-            desc_font = get_font(11, "regular")
+            desc_top = icon_y + 25
+            remaining_h = (sy + stage_h - 8) - desc_top
+            desc_fs = min(11, max(9, stage_w // 25))
+            desc_font = get_font(desc_fs, "regular")
+            line_h = int(desc_fs * 1.4)
+            available_lines = max(1, remaining_h // line_h)
             draw_text_block(
                 draw, node.description,
-                (sx + 10, icon_y + 25), desc_font,
-                hex_to_rgb(theme["text_muted"]), stage_w - 20, max_lines=4, align="center",
+                (sx + 10, desc_top), desc_font,
+                hex_to_rgb(theme["text_muted"]), stage_w - 20, max_lines=available_lines, align="center",
             )
 
         if i < n - 1:

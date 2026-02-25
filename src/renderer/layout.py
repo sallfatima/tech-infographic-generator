@@ -1,7 +1,105 @@
-"""Layout algorithms for positioning nodes on the canvas."""
+"""Layout algorithms for positioning nodes on the canvas.
+
+Content-aware: node dimensions adapt to their description length,
+so cards with more text are taller and cards with no text stay compact.
+"""
 
 import math
+from PIL import Image, ImageDraw
 
+from .typography import get_font, text_size, wrap_text
+
+
+# ---------------------------------------------------------------------------
+# Content measurement helpers
+# ---------------------------------------------------------------------------
+
+def measure_node_content_height(
+    description: str | None,
+    card_w: int,
+    has_icon: bool = False,
+    min_h: int = 60,
+    max_h: int = 300,
+    is_header_style: bool = False,
+    is_pipeline: bool = False,
+) -> int:
+    """Measure the ideal card height for a node based on its content.
+
+    This looks at the description text, wraps it at the given card width,
+    and computes the minimum height needed to show all content without
+    wasted space.
+
+    Args:
+        is_pipeline: If True, accounts for extra vertical elements
+            (stage label, bigger icon area) used in pipeline renderers.
+
+    Returns a height in pixels, clamped between min_h and max_h.
+    """
+    # We need a temporary draw context to measure text
+    tmp = Image.new("RGB", (1, 1))
+    draw = ImageDraw.Draw(tmp)
+
+    if is_pipeline:
+        # Pipeline layout: stage label (20) + icon area (50) + label (22) + padding
+        header_h = 20  # "STAGE N" label
+        icon_h = 50 if has_icon else 15
+        label_h = 24
+        padding = 24
+    else:
+        # Grid/card layout
+        header_h = 32 if is_header_style else 10
+        icon_h = 28 if has_icon else 0
+        label_h = 22
+        padding = 16
+
+    base_h = header_h + icon_h + label_h + padding
+
+    if not description:
+        return max(min_h, base_h)
+
+    # Measure wrapped description
+    text_w = card_w - 28  # inner padding
+    desc_fs = min(11, max(9, card_w // 30))
+    desc_font = get_font(desc_fs, "regular")
+    line_h = int(desc_fs * 1.4)
+
+    lines = wrap_text(draw, description, desc_font, text_w)
+    desc_h = len(lines) * line_h + 6  # +6 margin
+
+    needed = base_h + desc_h
+    return max(min_h, min(needed, max_h))
+
+
+def measure_content_heights(
+    nodes,
+    card_w: int,
+    is_header_style: bool = False,
+    is_pipeline: bool = False,
+    min_h: int = 60,
+    max_h: int = 300,
+) -> dict[str, int]:
+    """Measure ideal height for each node in a list.
+
+    Returns {node_id: ideal_height_px}.
+    """
+    heights = {}
+    for node in nodes:
+        h = measure_node_content_height(
+            description=node.description,
+            card_w=card_w,
+            has_icon=node.icon is not None,
+            min_h=min_h,
+            max_h=max_h,
+            is_header_style=is_header_style,
+            is_pipeline=is_pipeline,
+        )
+        heights[node.id] = h
+    return heights
+
+
+# ---------------------------------------------------------------------------
+# Layout functions
+# ---------------------------------------------------------------------------
 
 def layout_layered(
     layers: list[dict],
@@ -52,8 +150,12 @@ def layout_flow_horizontal(
     canvas_h: int,
     margin: int = 60,
     header_h: int = 80,
+    nodes=None,
 ) -> dict[str, tuple[int, int, int, int]]:
-    """Horizontal flow layout: left to right."""
+    """Horizontal flow layout: left to right.
+
+    If `nodes` are provided, stage height adapts to content.
+    """
     positions = {}
     n = len(node_ids)
     if n == 0:
@@ -62,7 +164,21 @@ def layout_flow_horizontal(
     usable_w = canvas_w - margin * 2
     gap = 50
     node_w = min((usable_w - (n - 1) * gap) // n, 200)
-    node_h = min(100, (canvas_h - header_h - margin * 2))
+
+    # Content-aware height
+    if nodes:
+        content_heights = measure_content_heights(
+            nodes, node_w, is_header_style=False, min_h=70, max_h=250,
+        )
+        # Use the tallest needed height (all stages same height for alignment)
+        node_h = max(content_heights.values())
+    else:
+        node_h = min(100, (canvas_h - header_h - margin * 2))
+
+    # Clamp to available space
+    max_available = canvas_h - header_h - margin * 2
+    node_h = min(node_h, max_available)
+
     total_w = n * node_w + (n - 1) * gap
     start_x = margin + (usable_w - total_w) // 2
     cy = header_h + (canvas_h - header_h - margin) // 2
@@ -112,8 +228,13 @@ def layout_grid(
     row_gap: int = 12,
     col_gap: int = 12,
     footer_h: int = 28,
+    nodes=None,
 ) -> dict[str, tuple[int, int, int, int]]:
-    """Grid layout for cards — balanced sizing with arrow gaps between rows."""
+    """Grid layout for cards — content-aware sizing with arrow gaps.
+
+    If `nodes` are passed, card heights adapt per-row based on the longest
+    description in that row. Rows with no descriptions stay compact.
+    """
     positions = {}
     n = len(node_ids)
     if n == 0:
@@ -125,25 +246,70 @@ def layout_grid(
     usable_h = canvas_h - header_h - footer_h
     node_w = (usable_w - (cols - 1) * col_gap) // cols
 
-    # Calculate card height: fill available space but cap for readability
+    # --- Content-aware row heights ---
+    if nodes:
+        content_heights = measure_content_heights(
+            nodes, node_w, is_header_style=True, min_h=70, max_h=250,
+        )
+        # Group by row — each row's height = max of its nodes
+        row_heights = []
+        for r in range(rows):
+            row_node_ids = node_ids[r * cols: (r + 1) * cols]
+            row_max_h = max(
+                content_heights.get(nid, 100) for nid in row_node_ids
+            )
+            row_heights.append(row_max_h)
+
+        # Check if total fits; if not, scale down proportionally
+        total_rows_h = sum(row_heights)
+        arrow_space = (rows - 1) * 50  # minimum gap for arrows between rows
+        available_for_cards = usable_h - arrow_space
+        if total_rows_h > available_for_cards and available_for_cards > 0:
+            scale = available_for_cards / total_rows_h
+            row_heights = [max(60, int(h * scale)) for h in row_heights]
+            total_rows_h = sum(row_heights)
+
+        # Compute row gaps from leftover
+        leftover_h = usable_h - total_rows_h
+        if rows > 1:
+            actual_row_gap = max(row_gap, min(leftover_h // (rows), 80))
+        else:
+            actual_row_gap = row_gap
+
+        # Push grid toward top
+        total_grid_h = total_rows_h + (rows - 1) * actual_row_gap
+        top_leftover = max(0, usable_h - total_grid_h)
+        start_y = header_h + min(top_leftover // 5, 30)
+
+        # Place nodes
+        cum_y = start_y
+        for r in range(rows):
+            rh = row_heights[r]
+            for c in range(cols):
+                idx = r * cols + c
+                if idx >= n:
+                    break
+                nid = node_ids[idx]
+                x = margin + c * (node_w + col_gap)
+                positions[nid] = (x, cum_y, node_w, rh)
+            cum_y += rh + actual_row_gap
+
+        return positions
+
+    # --- Fallback: fixed heights (when nodes not provided) ---
     raw_h = (usable_h - (rows - 1) * row_gap) // rows
     max_h = {1: 300, 2: 200, 3: 140}.get(rows, 120)
     node_h = min(raw_h, max_h)
 
-    # Distribute leftover space as row gaps (arrows need ~40-60px between rows)
     total_cards_h = rows * node_h
     leftover_h = usable_h - total_cards_h
     if rows > 1:
-        # All leftover goes between rows (for arrows), not above/below
         actual_row_gap = max(row_gap, leftover_h // rows)
-        # Cap the gap so it's not absurdly large
         actual_row_gap = min(actual_row_gap, 80)
     else:
         actual_row_gap = row_gap
 
-    # Position: push grid toward top with small offset
     total_grid_h = rows * node_h + (rows - 1) * actual_row_gap
-    # Small top offset (10-15% of leftover), rest goes to bottom
     top_leftover = max(0, usable_h - total_grid_h)
     start_y = header_h + min(top_leftover // 5, 30)
 
@@ -229,16 +395,7 @@ def get_node_edge(
     pos: tuple[int, int, int, int],
     target: tuple[int, int],
 ) -> tuple[int, int]:
-    """Get the edge point of a node closest to a target point.
-
-    Uses a directional approach:
-    - If the target is mostly below, return bottom-center
-    - If the target is mostly above, return top-center
-    - If the target is mostly to the right, return right-center
-    - If the target is mostly to the left, return left-center
-
-    This produces clean orthogonal connections.
-    """
+    """Get the edge point of a node closest to a target point."""
     x, y, w, h = pos
     cx, cy = x + w // 2, y + h // 2
     tx, ty = target
@@ -249,45 +406,33 @@ def get_node_edge(
     if dx == 0 and dy == 0:
         return (cx, cy)
 
-    # Determine primary direction based on angle
-    # Use the dominant axis to pick the edge
     if abs(dy) >= abs(dx):
-        # Primarily vertical
         if dy > 0:
-            # Target is below -> bottom-center
             return (cx, y + h)
         else:
-            # Target is above -> top-center
             return (cx, y)
     else:
-        # Primarily horizontal
         if dx > 0:
-            # Target is to the right -> right-center
             return (x + w, cy)
         else:
-            # Target is to the left -> left-center
             return (x, cy)
 
 
 def get_node_bottom(pos: tuple[int, int, int, int]) -> tuple[int, int]:
-    """Get the bottom-center point of a node."""
     x, y, w, h = pos
     return (x + w // 2, y + h)
 
 
 def get_node_top(pos: tuple[int, int, int, int]) -> tuple[int, int]:
-    """Get the top-center point of a node."""
     x, y, w, h = pos
     return (x + w // 2, y)
 
 
 def get_node_left(pos: tuple[int, int, int, int]) -> tuple[int, int]:
-    """Get the left-center point of a node."""
     x, y, w, h = pos
     return (x, y + h // 2)
 
 
 def get_node_right(pos: tuple[int, int, int, int]) -> tuple[int, int]:
-    """Get the right-center point of a node."""
     x, y, w, h = pos
     return (x + w, y + h // 2)

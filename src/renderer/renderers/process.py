@@ -83,10 +83,13 @@ def _render_guidebook(
         {"fill": "#EBF3FF", "border": "#5B8DEF", "text": "#2B5EA7", "header_bg": "#5B8DEF"},
     ])
 
-    # Layout as grid
+    # Layout as grid — content-aware: pass nodes so heights adapt to descriptions
     node_ids = [n.id for n in data.nodes]
     cols = 3 if len(node_ids) > 4 else 2 if len(node_ids) > 2 else 1
-    positions = layout_grid(node_ids, width, height, cols=cols, header_h=header_h)
+    positions = layout_grid(
+        node_ids, width, height, cols=cols, header_h=header_h,
+        nodes=data.nodes,
+    )
 
     # Draw flow arrows between consecutive nodes FIRST (behind cards)
     for i in range(len(data.nodes) - 1):
@@ -103,11 +106,9 @@ def _render_guidebook(
         row1, row2 = i // cols, (i + 1) // cols
 
         if row1 == row2:
-            # Same row → horizontal arrow (right edge to left edge)
             start = (x1 + w1, y1 + h1 // 2)
             end = (x2, y2 + h2 // 2)
         else:
-            # Different row → arrow goes down from bottom-right to top-left of next row
             start = (x1 + w1 // 2, y1 + h1)
             end = (x2 + w2 // 2, y2)
 
@@ -128,7 +129,6 @@ def _render_guidebook(
         color = node.color or sc["border"]
         header_bg = sc.get("header_bg", sc["border"])
 
-        # Node with colored header band (label auto-fitted, no forced truncation)
         draw_node_with_header(
             img, draw,
             (x, y, x + w, y + h),
@@ -219,10 +219,13 @@ def _render_whiteboard(
         {"fill": "#E3F2FD", "border": "#2B7DE9", "text": "#1565C0"},
     ])
 
-    # Layout as grid
+    # Layout as grid — content-aware
     node_ids = [n.id for n in data.nodes]
     cols = 3 if len(node_ids) > 4 else 2 if len(node_ids) > 2 else 1
-    positions = layout_grid(node_ids, width, height, cols=cols, header_h=header_h)
+    positions = layout_grid(
+        node_ids, width, height, cols=cols, header_h=header_h,
+        nodes=data.nodes,
+    )
 
     # Draw flow arrows between consecutive nodes FIRST (behind cards)
     for i in range(len(data.nodes) - 1):
@@ -359,10 +362,13 @@ def _render_dark(
         draw.text((60, 62), data.subtitle, fill=hex_to_rgb(theme["text_muted"]), font=sub_font)
         header_h = 95
 
-    # Layout as grid
+    # Layout as grid — content-aware
     node_ids = [n.id for n in data.nodes]
     cols = 3 if len(node_ids) > 4 else 2 if len(node_ids) > 2 else 1
-    positions = layout_grid(node_ids, width, height, cols=cols, header_h=header_h)
+    positions = layout_grid(
+        node_ids, width, height, cols=cols, header_h=header_h,
+        nodes=data.nodes,
+    )
     node_colors = theme.get("node_colors", [theme["accent"]])
 
     # Draw flow arrows between consecutive nodes FIRST (behind cards)

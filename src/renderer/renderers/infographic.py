@@ -86,7 +86,7 @@ def _render_guidebook(
     node_ids = [n.id for n in data.nodes]
     n = len(node_ids)
     cols = 3 if n >= 6 else 2 if n >= 3 else 1
-    positions = layout_grid(node_ids, width, height, cols=cols, header_h=header_h)
+    positions = layout_grid(node_ids, width, height, cols=cols, header_h=header_h, nodes=data.nodes)
 
     for i, node in enumerate(data.nodes):
         if node.id not in positions:
@@ -100,7 +100,7 @@ def _render_guidebook(
         draw_node_with_header(
             img, draw,
             (x, y, x + w, y + h),
-            label=node.label[:30],
+            label=node.label,
             description=node.description,
             icon_name=node.icon.value if node.icon else None,
             fill_color="#FFFFFF",
@@ -181,7 +181,7 @@ def _render_whiteboard(
     node_ids = [n.id for n in data.nodes]
     n = len(node_ids)
     cols = 3 if n >= 6 else 2 if n >= 3 else 1
-    positions = layout_grid(node_ids, width, height, cols=cols, header_h=header_h)
+    positions = layout_grid(node_ids, width, height, cols=cols, header_h=header_h, nodes=data.nodes)
 
     for i, node in enumerate(data.nodes):
         if node.id not in positions:
@@ -218,22 +218,26 @@ def _render_whiteboard(
         label_font = get_font(17, "bold")
         draw.text(
             (label_x, content_y),
-            node.label[:30],
+            node.label,
             fill=hex_to_rgb(theme["text"]),
             font=label_font,
         )
         content_y += 32
 
-        # Description
+        # Description — dynamic max_lines
         if node.description:
-            desc_font = get_font(13, "regular")
+            desc_fs = min(13, max(9, h // 10))
+            desc_font = get_font(desc_fs, "regular")
+            line_h = int(desc_fs * 1.4)
+            remaining_h = (y + h - 8) - content_y
+            available_lines = max(1, remaining_h // line_h)
             draw_text_block(
                 draw, node.description,
                 (x + 18, content_y),
                 desc_font,
                 hex_to_rgb(theme["text_muted"]),
                 w - 36,
-                max_lines=(h - 50) // 18,
+                max_lines=available_lines,
             )
 
     # Footer
@@ -276,7 +280,7 @@ def _render_dark(
     node_ids = [n.id for n in data.nodes]
     n = len(node_ids)
     cols = 3 if n >= 6 else 2 if n >= 3 else 1
-    positions = layout_grid(node_ids, width, height, cols=cols, header_h=header_h)
+    positions = layout_grid(node_ids, width, height, cols=cols, header_h=header_h, nodes=data.nodes)
 
     node_colors = theme.get("node_colors", [theme["accent"]])
 
@@ -305,22 +309,26 @@ def _render_dark(
         label_font = get_font(17, "bold")
         draw.text(
             (label_x, content_y),
-            node.label[:35],
+            node.label,
             fill=hex_to_rgb(theme["text"]),
             font=label_font,
         )
         content_y += 30
 
-        # Description
+        # Description — dynamic max_lines
         if node.description:
-            desc_font = get_font(13, "regular")
+            desc_fs = min(13, max(9, h // 10))
+            desc_font = get_font(desc_fs, "regular")
+            line_h = int(desc_fs * 1.4)
+            remaining_h = (y + h - 8) - content_y
+            available_lines = max(1, remaining_h // line_h)
             draw_text_block(
                 draw, node.description,
                 (x + 20, content_y),
                 desc_font,
                 hex_to_rgb(theme["text_muted"]),
                 w - 40,
-                max_lines=(h - 60) // 20,
+                max_lines=available_lines,
             )
 
     # Footer

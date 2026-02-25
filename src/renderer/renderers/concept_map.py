@@ -297,17 +297,21 @@ def _render_whiteboard(
         )
         content_y += lh + 2
 
-        # Description
+        # Description — dynamic max_lines
         if node.description and h > 60:
-            desc_font = get_font(min(10, max(8, h // 8)), "regular")
+            desc_fs = min(10, max(8, h // 8))
+            desc_font = get_font(desc_fs, "regular")
             from ..typography import draw_text_block
+            line_h = int(desc_fs * 1.4)
+            remaining_h = (y + h - 6) - content_y
+            available_lines = max(1, remaining_h // line_h)
             draw_text_block(
                 draw, node.description,
                 (x + padding, content_y),
                 desc_font,
                 hex_to_rgb(theme["text_muted"]),
                 w - padding * 2,
-                max_lines=2,
+                max_lines=available_lines,
                 align="center",
             )
 

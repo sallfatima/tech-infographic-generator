@@ -86,7 +86,7 @@ def _render_guidebook(
 
     # Layout nodes
     node_ids = [n.id for n in data.nodes]
-    positions = layout_flow_horizontal(node_ids, width, height, header_h=header_h)
+    positions = layout_flow_horizontal(node_ids, width, height, header_h=header_h, nodes=data.nodes)
     nodes_dict = {n.id: n for n in data.nodes}
     section_colors = theme.get("section_colors", [
         {"fill": "#EBF3FF", "border": "#5B8DEF", "text": "#2B5EA7", "header_bg": "#5B8DEF"},
@@ -221,7 +221,7 @@ def _render_whiteboard(
 
     # Layout nodes
     node_ids = [n.id for n in data.nodes]
-    positions = layout_flow_horizontal(node_ids, width, height, header_h=header_h)
+    positions = layout_flow_horizontal(node_ids, width, height, header_h=header_h, nodes=data.nodes)
     nodes_dict = {n.id: n for n in data.nodes}
     section_colors = theme.get("section_colors", [
         {"fill": "#E3F2FD", "border": "#2B7DE9", "text": "#1565C0"},
@@ -355,7 +355,7 @@ def _render_dark(
 
     # Layout nodes
     node_ids = [n.id for n in data.nodes]
-    positions = layout_flow_horizontal(node_ids, width, height, header_h=header_h)
+    positions = layout_flow_horizontal(node_ids, width, height, header_h=header_h, nodes=data.nodes)
     nodes_dict = {n.id: n for n in data.nodes}
     node_colors = theme.get("node_colors", [theme["accent"]])
 

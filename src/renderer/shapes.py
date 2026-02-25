@@ -486,15 +486,20 @@ def draw_node(
     )
     content_y += lh + 4
 
-    # Description
+    # Description — dynamic max_lines based on remaining card space
     if description and h > 70:
-        desc_font = get_font(min(12, max(9, h // 8)), "regular")
+        remaining_h = (y1 - 6) - content_y
+        desc_fs = min(12, max(9, h // 8))
+        desc_font = get_font(desc_fs, "regular")
+        line_h = int(desc_fs * 1.4)
+        available_lines = max(1, remaining_h // line_h)
         draw_text_block(
             draw, description,
             (x0 + padding, content_y),
             desc_font,
             hex_to_rgb(text_muted_color),
             content_w,
-            max_lines=3,
+            line_height=line_h,
+            max_lines=available_lines,
             align="center",
         )
