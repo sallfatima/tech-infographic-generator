@@ -379,20 +379,39 @@ def layout_radial(
     positions = {}
     cx = canvas_w // 2
     cy = header_h + (canvas_h - header_h) // 2
-    center_w, center_h = 180, 100
+    center_w, center_h = 200, 120
     positions[center_id] = (cx - center_w // 2, cy - center_h // 2, center_w, center_h)
 
     n = len(outer_ids)
     if n == 0:
         return positions
 
-    radius = min(canvas_w, canvas_h - header_h) // 3
-    node_w, node_h = 170, 90
+    # Adapt radius and node size to number of outer nodes
+    available = min(canvas_w, canvas_h - header_h)
+    if n <= 4:
+        radius = available // 3
+        node_w, node_h = 200, 110
+    elif n <= 6:
+        radius = int(available * 0.38)
+        node_w, node_h = 180, 100
+    else:
+        radius = int(available * 0.40)
+        node_w, node_h = 170, 95
+
+    # Clamp so nodes don't go offscreen
+    max_radius = min(
+        (canvas_w - node_w - 40) // 2,
+        (canvas_h - header_h - node_h - 40) // 2,
+    )
+    radius = min(radius, max_radius)
 
     for i, nid in enumerate(outer_ids):
         angle = (2 * math.pi * i) / n - math.pi / 2
         nx = int(cx + radius * math.cos(angle)) - node_w // 2
         ny = int(cy + radius * math.sin(angle)) - node_h // 2
+        # Clamp to canvas bounds
+        nx = max(20, min(nx, canvas_w - node_w - 20))
+        ny = max(header_h + 10, min(ny, canvas_h - node_h - 20))
         positions[nid] = (nx, ny, node_w, node_h)
 
     return positions

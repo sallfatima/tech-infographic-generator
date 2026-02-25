@@ -129,6 +129,7 @@ def _render_guidebook(
             ax_start = sx + stage_w + 5
             ax_end = ax_start + arrow_gap - 10
             ay = cy
+            arrow_len = ax_end - ax_start
 
             # Get label from connections if available
             arrow_label = None
@@ -137,17 +138,32 @@ def _render_guidebook(
                     arrow_label = conn.label
                     break
 
-            draw_numbered_arrow(
-                draw,
-                (ax_start, ay),
-                (ax_end, ay),
-                number=i + 1,
-                label=arrow_label,
-                color=sc["border"],
-                width=2,
-                head_size=10,
-                dashed=True,
-            )
+            if arrow_len > 80:
+                # Enough space for number + label
+                draw_numbered_arrow(
+                    draw,
+                    (ax_start, ay),
+                    (ax_end, ay),
+                    number=i + 1,
+                    label=arrow_label,
+                    color=sc["border"],
+                    width=2,
+                    head_size=10,
+                    dashed=True,
+                )
+            else:
+                # Short arrow: just arrow + small step number, skip label
+                draw_straight_arrow(
+                    draw, (ax_start, ay), (ax_end, ay),
+                    color=sc["border"], width=2, dashed=True, head_size=8,
+                )
+                mid_x = (ax_start + ax_end) // 2
+                draw_step_number(
+                    draw, (mid_x - 9, ay - 22),
+                    i + 1, bg_color="#FFFFFF",
+                    border_color=sc["border"],
+                    text_color=sc["border"], radius=9,
+                )
 
     # Footer
     if data.footer:
