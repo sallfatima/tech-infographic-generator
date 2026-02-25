@@ -436,3 +436,331 @@ def get_node_left(pos: tuple[int, int, int, int]) -> tuple[int, int]:
 def get_node_right(pos: tuple[int, int, int, int]) -> tuple[int, int]:
     x, y, w, h = pos
     return (x + w, y + h // 2)
+
+
+# ---------------------------------------------------------------------------
+# Force-directed layout (organic positioning)
+# ---------------------------------------------------------------------------
+
+def layout_force_directed(
+    nodes: list,
+    connections: list,
+    canvas_w: int,
+    canvas_h: int,
+    margin: int = 80,
+    header_h: int = 120,
+    iterations: int = 150,
+    node_w: int = 160,
+    node_h: int = 90,
+) -> dict[str, tuple[int, int, int, int]]:
+    """Force-directed layout for organic, non-grid placement (SwirlAI style).
+
+    Connected nodes attract, all nodes repel, same-group nodes cluster.
+    Returns {node_id: (x, y, w, h)}.
+    """
+    import random
+    random.seed(42)  # deterministic for same input
+
+    n = len(nodes)
+    if n == 0:
+        return {}
+
+    # Build adjacency from connections
+    adj = set()
+    for conn in connections:
+        adj.add((conn.from_node, conn.to_node))
+        adj.add((conn.to_node, conn.from_node))
+
+    # Initialize positions: group-based clustering
+    usable_w = canvas_w - 2 * margin
+    usable_h = canvas_h - header_h - margin
+    cx, cy = margin + usable_w // 2, header_h + usable_h // 2
+
+    # Group nodes by zone/group
+    groups: dict[str | None, list[int]] = {}
+    for i, node in enumerate(nodes):
+        g = getattr(node, 'zone', None) or getattr(node, 'group', None)
+        groups.setdefault(g, []).append(i)
+
+    # Seed positions by group
+    pos_x = [0.0] * n
+    pos_y = [0.0] * n
+    g_keys = list(groups.keys())
+    for gi, gk in enumerate(g_keys):
+        # Spread groups around the center
+        angle = 2 * math.pi * gi / max(len(g_keys), 1) - math.pi / 2
+        gr = min(usable_w, usable_h) * 0.25
+        gx = cx + gr * math.cos(angle) if gk is not None else cx
+        gy = cy + gr * math.sin(angle) if gk is not None else cy
+        for idx in groups[gk]:
+            pos_x[idx] = gx + random.uniform(-40, 40)
+            pos_y[idx] = gy + random.uniform(-40, 40)
+
+    # Force simulation — scale repulsion with canvas size and node count
+    # For few nodes on large canvas, we need stronger repulsion
+    area_factor = (usable_w * usable_h) / max(n * n, 1)
+    repulsion_k = max(8000.0, area_factor * 0.5)
+    attraction_k = 0.012
+    group_k = 0.03
+    damping = 0.5
+
+    node_ids = [node.id for node in nodes]
+    id_to_idx = {nid: i for i, nid in enumerate(node_ids)}
+
+    for iteration in range(iterations):
+        # Cooling schedule
+        temp = damping * (1 - iteration / iterations)
+        if temp < 0.01:
+            break
+
+        fx = [0.0] * n
+        fy = [0.0] * n
+
+        # Repulsive forces (all pairs)
+        for i in range(n):
+            for j in range(i + 1, n):
+                dx = pos_x[i] - pos_x[j]
+                dy = pos_y[i] - pos_y[j]
+                dist_sq = dx * dx + dy * dy + 1.0
+                dist = math.sqrt(dist_sq)
+                force = repulsion_k / dist_sq
+                fdx = force * dx / dist
+                fdy = force * dy / dist
+                fx[i] += fdx
+                fy[i] += fdy
+                fx[j] -= fdx
+                fy[j] -= fdy
+
+        # Attractive forces (connected pairs)
+        for conn in connections:
+            i = id_to_idx.get(conn.from_node)
+            j = id_to_idx.get(conn.to_node)
+            if i is None or j is None:
+                continue
+            dx = pos_x[j] - pos_x[i]
+            dy = pos_y[j] - pos_y[i]
+            dist = math.sqrt(dx * dx + dy * dy + 1.0)
+            force = attraction_k * dist
+            fx[i] += force * dx / dist
+            fy[i] += force * dy / dist
+            fx[j] -= force * dx / dist
+            fy[j] -= force * dy / dist
+
+        # Group cohesion forces
+        for gk, indices in groups.items():
+            if gk is None or len(indices) < 2:
+                continue
+            gcx = sum(pos_x[i] for i in indices) / len(indices)
+            gcy = sum(pos_y[i] for i in indices) / len(indices)
+            for i in indices:
+                fx[i] += group_k * (gcx - pos_x[i])
+                fy[i] += group_k * (gcy - pos_y[i])
+
+        # Apply forces with temperature
+        for i in range(n):
+            pos_x[i] += fx[i] * temp
+            pos_y[i] += fy[i] * temp
+            # Boundary clamping
+            pos_x[i] = max(margin + node_w // 2, min(canvas_w - margin - node_w // 2, pos_x[i]))
+            pos_y[i] = max(header_h + node_h // 2, min(canvas_h - margin - node_h // 2, pos_y[i]))
+
+    # Post-process: expand to fill canvas if nodes are too clustered
+    if n > 1:
+        min_x = min(pos_x)
+        max_x = max(pos_x)
+        min_y = min(pos_y)
+        max_y = max(pos_y)
+        span_x = max_x - min_x
+        span_y = max_y - min_y
+        target_w = usable_w * 0.75
+        target_h = usable_h * 0.70
+        # Scale up if nodes use less than 60% of the canvas
+        if span_x > 0 and span_x < target_w * 0.6:
+            scale_x = target_w / max(span_x, 1)
+            for i in range(n):
+                pos_x[i] = cx + (pos_x[i] - cx) * scale_x
+        if span_y > 0 and span_y < target_h * 0.6:
+            scale_y = target_h / max(span_y, 1)
+            for i in range(n):
+                pos_y[i] = cy + (pos_y[i] - cy) * scale_y
+        # Re-clamp to canvas bounds
+        for i in range(n):
+            pos_x[i] = max(margin + node_w // 2, min(canvas_w - margin - node_w // 2, pos_x[i]))
+            pos_y[i] = max(header_h + node_h // 2, min(canvas_h - margin - node_h // 2, pos_y[i]))
+
+    # Convert to bounding boxes
+    positions = {}
+    for i, nid in enumerate(node_ids):
+        x = int(pos_x[i]) - node_w // 2
+        y = int(pos_y[i]) - node_h // 2
+        positions[nid] = (x, y, node_w, node_h)
+
+    # Resolve overlaps as final pass
+    positions = resolve_overlaps(positions, padding=15)
+    return positions
+
+
+def layout_zone_based(
+    zones: list[dict],
+    nodes: list,
+    connections: list,
+    canvas_w: int,
+    canvas_h: int,
+    margin: int = 60,
+    header_h: int = 100,
+    zone_padding: int = 35,
+) -> tuple[dict[str, tuple], list[dict]]:
+    """Zone-based layout: allocate regions per zone, place nodes within.
+
+    Returns (node_positions, zone_rects) where zone_rects is
+    [{"bbox": (x,y,w,h), "name": str, "color": str}].
+    """
+    if not zones:
+        return {}, []
+
+    n_zones = len(zones)
+    usable_w = canvas_w - 2 * margin
+    usable_h = canvas_h - header_h - margin
+
+    # Decide arrangement: horizontal if <=3 zones, vertical if more
+    if n_zones <= 3:
+        # Horizontal arrangement
+        zone_gap = 20
+        zone_w = (usable_w - (n_zones - 1) * zone_gap) // n_zones
+        zone_rects = []
+        for zi, zone in enumerate(zones):
+            zx = margin + zi * (zone_w + zone_gap)
+            zy = header_h + 10
+            zh = usable_h - 20
+            zone_rects.append({
+                "bbox": (zx, zy, zone_w, zh),
+                "name": zone.get("name", f"Zone {zi + 1}"),
+                "color": zone.get("color", "#2B7DE9"),
+            })
+    else:
+        # 2-row arrangement
+        cols = (n_zones + 1) // 2
+        zone_gap = 20
+        row_gap = 20
+        zone_w = (usable_w - (cols - 1) * zone_gap) // cols
+        row_h = (usable_h - row_gap) // 2
+        zone_rects = []
+        for zi, zone in enumerate(zones):
+            r = zi // cols
+            c = zi % cols
+            zx = margin + c * (zone_w + zone_gap)
+            zy = header_h + 10 + r * (row_h + row_gap)
+            zone_rects.append({
+                "bbox": (zx, zy, zone_w, row_h),
+                "name": zone.get("name", f"Zone {zi + 1}"),
+                "color": zone.get("color", "#2B7DE9"),
+            })
+
+    # Place nodes within their zone
+    positions = {}
+    zone_node_map = {z.get("name", f"Zone {i + 1}"): z.get("nodes", []) for i, z in enumerate(zones)}
+
+    for zr in zone_rects:
+        zname = zr["name"]
+        node_ids_in_zone = zone_node_map.get(zname, [])
+        if not node_ids_in_zone:
+            continue
+
+        bx, by, bw, bh = zr["bbox"]
+        inner_x = bx + zone_padding
+        inner_y = by + zone_padding + 25  # +25 for zone title
+        inner_w = bw - 2 * zone_padding
+        inner_h = bh - 2 * zone_padding - 25
+
+        n_local = len(node_ids_in_zone)
+        # Simple grid within zone
+        if n_local <= 3:
+            cols_local = n_local
+        elif n_local <= 6:
+            cols_local = 3
+        else:
+            cols_local = min(4, n_local)
+
+        rows_local = math.ceil(n_local / cols_local)
+        nw = min((inner_w - (cols_local - 1) * 12) // cols_local, 150)
+        nh = min((inner_h - (rows_local - 1) * 12) // rows_local, 90)
+
+        for ni, nid in enumerate(node_ids_in_zone):
+            r = ni // cols_local
+            c = ni % cols_local
+            total_row_w = cols_local * nw + (cols_local - 1) * 12
+            offset_x = (inner_w - total_row_w) // 2
+            nx = inner_x + offset_x + c * (nw + 12)
+            ny = inner_y + r * (nh + 12)
+            positions[nid] = (nx, ny, nw, nh)
+
+    return positions, zone_rects
+
+
+def resolve_overlaps(
+    positions: dict[str, tuple[int, int, int, int]],
+    padding: int = 20,
+    max_iterations: int = 50,
+    canvas_w: int = 1400,
+    canvas_h: int = 900,
+) -> dict[str, tuple[int, int, int, int]]:
+    """Post-process positions to eliminate bounding-box overlaps.
+
+    Iteratively pushes overlapping nodes apart along the axis of least
+    overlap. Clamps to canvas bounds.
+    """
+    ids = list(positions.keys())
+    n = len(ids)
+    if n < 2:
+        return positions
+
+    # Work with mutable copies
+    pos = {nid: list(bbox) for nid, bbox in positions.items()}
+
+    for _ in range(max_iterations):
+        moved = False
+        for i in range(n):
+            for j in range(i + 1, n):
+                a = pos[ids[i]]
+                b = pos[ids[j]]
+                # Check overlap with padding
+                ax1, ay1 = a[0] - padding, a[1] - padding
+                ax2, ay2 = a[0] + a[2] + padding, a[1] + a[3] + padding
+                bx1, by1 = b[0] - padding, b[1] - padding
+                bx2, by2 = b[0] + b[2] + padding, b[1] + b[3] + padding
+
+                if ax1 < bx2 and ax2 > bx1 and ay1 < by2 and ay2 > by1:
+                    # Overlap detected — push apart
+                    overlap_x = min(ax2 - bx1, bx2 - ax1)
+                    overlap_y = min(ay2 - by1, by2 - ay1)
+
+                    if overlap_x < overlap_y:
+                        # Push horizontally
+                        shift = overlap_x // 2 + 1
+                        if a[0] < b[0]:
+                            a[0] -= shift
+                            b[0] += shift
+                        else:
+                            a[0] += shift
+                            b[0] -= shift
+                    else:
+                        # Push vertically
+                        shift = overlap_y // 2 + 1
+                        if a[1] < b[1]:
+                            a[1] -= shift
+                            b[1] += shift
+                        else:
+                            a[1] += shift
+                            b[1] -= shift
+
+                    # Clamp
+                    a[0] = max(10, min(a[0], canvas_w - a[2] - 10))
+                    a[1] = max(10, min(a[1], canvas_h - a[3] - 10))
+                    b[0] = max(10, min(b[0], canvas_w - b[2] - 10))
+                    b[1] = max(10, min(b[1], canvas_h - b[3] - 10))
+                    moved = True
+
+        if not moved:
+            break
+
+    return {nid: tuple(bbox) for nid, bbox in pos.items()}

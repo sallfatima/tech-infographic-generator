@@ -388,6 +388,114 @@ def draw_numbered_arrow(
         )
 
 
+def _sample_quadratic_bezier(
+    p0: tuple[int, int],
+    p1: tuple[int, int],
+    p2: tuple[int, int],
+    n_points: int = 30,
+) -> list[tuple[int, int]]:
+    """Sample N points along a quadratic bezier curve P0->P1->P2."""
+    pts = []
+    for i in range(n_points + 1):
+        t = i / n_points
+        inv = 1 - t
+        x = inv * inv * p0[0] + 2 * inv * t * p1[0] + t * t * p2[0]
+        y = inv * inv * p0[1] + 2 * inv * t * p1[1] + t * t * p2[1]
+        pts.append((int(x), int(y)))
+    return pts
+
+
+def draw_bezier_arrow(
+    draw: ImageDraw.Draw,
+    start: tuple[int, int],
+    end: tuple[int, int],
+    color: str = "#2B7DE9",
+    width: int = 2,
+    head_size: int = 10,
+    dashed: bool = True,
+    curvature: float = 0.25,
+    label: str | None = None,
+    flip_curve: bool = False,
+) -> None:
+    """Draw a curved bezier arrow (SwirlAI style).
+
+    The curve bends perpendicular to the start-end line. The `flip_curve`
+    flag controls which side the curve bends toward.
+    """
+    color_rgb = hex_to_rgb(color)
+
+    sx, sy = start
+    ex, ey = end
+    dx, dy = ex - sx, ey - sy
+    dist = math.sqrt(dx * dx + dy * dy)
+    if dist < 5:
+        return
+
+    # Perpendicular offset for control point
+    offset = dist * curvature
+    if flip_curve:
+        offset = -offset
+    # Perpendicular direction
+    nx, ny = -dy / dist, dx / dist
+    # Control point at midpoint + perpendicular offset
+    cx_ctrl = (sx + ex) / 2 + nx * offset
+    cy_ctrl = (sy + ey) / 2 + ny * offset
+
+    # Sample the curve
+    n_samples = max(20, int(dist / 3))
+    pts = _sample_quadratic_bezier(
+        (sx, sy), (int(cx_ctrl), int(cy_ctrl)), (ex, ey), n_samples
+    )
+
+    # Draw as polyline (dashed or solid)
+    _draw_polyline(draw, pts, color_rgb, width, dashed=dashed)
+
+    # Arrowhead from last two points
+    if len(pts) >= 2:
+        angle = math.atan2(pts[-1][1] - pts[-2][1], pts[-1][0] - pts[-2][0])
+        _draw_arrowhead(draw, pts[-1], angle, head_size, color_rgb)
+
+    # Label at the curve midpoint (t=0.5)
+    if label:
+        mid_idx = len(pts) // 2
+        _draw_path_label(draw, pts[mid_idx], label, color)
+
+
+def _draw_path_label(
+    draw: ImageDraw.Draw,
+    position: tuple[int, int],
+    label: str,
+    color: str,
+) -> None:
+    """Draw a connection label at a position with white pill background.
+
+    Uses semibold font to simulate italic style (SwirlAI reference).
+    Positioned with slight offset above the point.
+    """
+    font = get_font(11, "semibold")
+    tw, th = text_size(draw, label, font)
+    px, py = position
+    # Offset slightly above the curve
+    py -= th // 2 + 6
+    pad = 5
+
+    # White pill bg with subtle border
+    draw.rounded_rectangle(
+        (px - tw // 2 - pad, py - pad,
+         px + tw // 2 + pad, py + th + pad),
+        radius=4,
+        fill=(255, 255, 255, 230),
+        outline=hex_to_rgb(color),
+        width=1,
+    )
+    draw.text(
+        (px - tw // 2, py),
+        label,
+        fill=hex_to_rgb(color),
+        font=font,
+    )
+
+
 def draw_connection(
     draw: ImageDraw.Draw,
     start: tuple[int, int],
@@ -401,8 +509,19 @@ def draw_connection(
     """Draw a connection between two points with optional label.
 
     Args:
-        routing: "manhattan" for orthogonal routing, "straight" for direct lines.
+        routing: "manhattan" for orthogonal routing, "straight" for direct lines,
+                 "bezier" for curved bezier arrows.
     """
+    # Handle curved styles regardless of routing
+    if style in ("curved_arrow", "curved_dashed"):
+        dashed = style == "curved_dashed"
+        draw_bezier_arrow(draw, start, end, color, width, dashed=dashed, label=label)
+        return
+
+    if routing == "bezier":
+        draw_bezier_arrow(draw, start, end, color, width, dashed=True, label=label)
+        return
+
     if routing == "manhattan":
         if style == "bidirectional":
             draw_bidirectional_arrow(draw, start, end, color, width)

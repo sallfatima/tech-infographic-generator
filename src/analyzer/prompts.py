@@ -46,6 +46,9 @@ Choose the best type for the content:
   **AI Engineering:** agent, rag, prompt, finetune, embedding, vector_db, llm, transformer, evaluation, guardrails, context, tool_use, mcp, multi_agent, reasoning
 - `shape`: rounded_rect (default), circle, diamond, cylinder (for databases/vector stores), cloud (for cloud services), hexagon (for AI/ML components)
 - `layer`: integer for architecture diagrams (0=top/client, 1=api, 2=services, 3=data)
+- `zone`: optional zone name for visual grouping (e.g., "Ingestion Phase", "Query Phase"). Nodes with the same zone are grouped visually in a colored dashed region
+- `group`: optional group label for clustering related nodes
+- For multi-agent or pipeline diagrams, include a "user" node with `icon: "person_laptop"` to represent the human actor
 
 ### AI Engineering Icon Guidelines
 When the content is about AI/ML topics, prefer AI-specific icons:
@@ -65,8 +68,10 @@ When the content is about AI/ML topics, prefer AI-specific icons:
 
 ### Connections
 - `from_node` and `to_node` MUST reference valid node IDs
-- `style`: arrow (default), dashed_arrow, bidirectional, line
-- `label`: optional short description of the data/relationship flow
+- `style`: arrow (default), dashed_arrow, bidirectional, line, curved_arrow (for organic flows), curved_dashed (for feedback loops/secondary paths)
+- `label`: ALWAYS include descriptive labels on connections like "embeddings", "query", "context", "response", "tokens", "feedback", "Done Once". Unlabeled arrows look incomplete.
+- Use "dashed_arrow" for primary data flows
+- Use "curved_arrow" or "curved_dashed" for return paths, feedback loops, or secondary flows
 - For AI pipelines, use descriptive labels like "embeddings", "query", "context", "response", "tokens"
 
 ### Layers (for architecture type only)
@@ -74,12 +79,23 @@ When the content is about AI/ML topics, prefer AI-specific icons:
 - Order layers from top (client/presentation) to bottom (data/storage)
 - For AI systems, common layers: User/Interface → Agent/Orchestration → LLM/Models → Data/Knowledge
 
+### Zones (for visual grouping)
+- Use `zones` to define colored visual regions that group related nodes together
+- Format: `[{{"name": "Ingestion Phase", "color": "#2B7DE9", "nodes": ["docs", "chunker", "embedder"]}}]`
+- Each zone creates a dashed-border colored region on the diagram
+- Also set the `zone` field on each node to match the zone name
+- Good for: pipeline phases, system boundaries, component groups
+- Colors: blue (#2B7DE9), orange (#E8833A), green (#4CAF50), red (#E53935), purple (#9C27B0)
+
 ### General
 - `title`: max 60 chars, clear and descriptive
 - `subtitle`: optional, max 100 chars
 - `color_scheme`: keep as "tech_blue" unless the content suggests otherwise
-- Create 4-8 nodes for most infographics, max 12
+- Create 6-10 nodes for most infographics (more nodes = more visual connections = more professional result). Max 12
 - IMPORTANT: Every node MUST have a rich description (2-3 sentences). The description should explain what the component does and why it matters. Short descriptions like "Handles data" are NOT acceptable.
+- IMPORTANT: EVERY connection MUST have a label. Unlabeled arrows look unfinished.
+- Use varied node shapes: include at least 2-3 different shapes per infographic (cylinder for databases, hexagon for AI/ML, diamond for decision points, cloud for external services, circle for users)
+- Group related nodes with `zone` or `group` fields for visual clarity
 - Make connections that show actual data flow or relationships
 - For LinkedIn posts: extract the key technical message, ignore promotional text
 - For AI Engineering content: focus on the system design patterns, data flows, and component interactions
@@ -222,6 +238,42 @@ Output:
     {{"from_node": "agent", "to_node": "cooperation", "style": "arrow"}},
     {{"from_node": "agent", "to_node": "guardrails", "style": "arrow"}},
     {{"from_node": "agent", "to_node": "memory", "style": "arrow"}}
+  ],
+  "layers": [],
+  "color_scheme": "tech_blue"
+}}
+
+### Example 6: Zone-Grouped RAG Architecture (SwirlAI style)
+Input: "How a RAG chatbot works with separate ingestion and query phases"
+
+Output:
+{{
+  "title": "RAG Chatbot Architecture",
+  "subtitle": "Two-phase system: ingestion and real-time query",
+  "type": "architecture",
+  "zones": [
+    {{"name": "Ingestion Phase", "color": "#2B7DE9", "nodes": ["docs", "chunker", "embedder", "vectordb"]}},
+    {{"name": "Query Phase", "color": "#E8833A", "nodes": ["user", "retriever", "llm", "response"]}}
+  ],
+  "nodes": [
+    {{"id": "user", "label": "User", "description": "Sends natural language questions through a chat interface", "icon": "person_laptop", "shape": "rounded_rect", "zone": "Query Phase"}},
+    {{"id": "docs", "label": "Documents", "description": "Source documents: PDFs, web pages, knowledge base articles", "icon": "document", "shape": "rounded_rect", "zone": "Ingestion Phase"}},
+    {{"id": "chunker", "label": "Text Chunking", "description": "Splits documents into semantic chunks with overlap for context preservation", "icon": "filter", "shape": "rounded_rect", "zone": "Ingestion Phase"}},
+    {{"id": "embedder", "label": "Embedding Model", "description": "Converts text chunks into high-dimensional vectors using transformers", "icon": "embedding", "shape": "hexagon", "zone": "Ingestion Phase"}},
+    {{"id": "vectordb", "label": "Vector Database", "description": "Stores and indexes embeddings for fast similarity search", "icon": "vector_db", "shape": "cylinder", "zone": "Ingestion Phase"}},
+    {{"id": "retriever", "label": "Retriever", "description": "Performs semantic similarity search to find relevant context", "icon": "search", "shape": "rounded_rect", "zone": "Query Phase"}},
+    {{"id": "llm", "label": "LLM", "description": "Generates contextual response using retrieved chunks and user query", "icon": "llm", "shape": "hexagon", "zone": "Query Phase"}},
+    {{"id": "response", "label": "Response", "description": "Final answer delivered back to the user with source citations", "icon": "chat", "shape": "rounded_rect", "zone": "Query Phase"}}
+  ],
+  "connections": [
+    {{"from_node": "docs", "to_node": "chunker", "label": "raw text", "style": "dashed_arrow"}},
+    {{"from_node": "chunker", "to_node": "embedder", "label": "chunks", "style": "dashed_arrow"}},
+    {{"from_node": "embedder", "to_node": "vectordb", "label": "vectors", "style": "dashed_arrow"}},
+    {{"from_node": "user", "to_node": "retriever", "label": "query", "style": "curved_arrow"}},
+    {{"from_node": "vectordb", "to_node": "retriever", "label": "top-k results", "style": "curved_dashed"}},
+    {{"from_node": "retriever", "to_node": "llm", "label": "context + query", "style": "dashed_arrow"}},
+    {{"from_node": "llm", "to_node": "response", "label": "generated answer", "style": "dashed_arrow"}},
+    {{"from_node": "response", "to_node": "user", "label": "answer", "style": "curved_dashed"}}
   ],
   "layers": [],
   "color_scheme": "tech_blue"

@@ -15,9 +15,9 @@ from ..shapes import (
     draw_step_number, draw_outer_border, draw_numbered_badge,
 )
 from ..gradients import draw_gradient_bar
-from ..icons import paste_icon
+from ..icons import paste_icon, draw_icon_with_bg
 from ..layout import layout_grid
-from ..arrows import draw_numbered_arrow, draw_straight_arrow
+from ..arrows import draw_numbered_arrow, draw_straight_arrow, draw_bezier_arrow
 
 
 def render_process(
@@ -247,12 +247,10 @@ def _render_whiteboard(
             start = (x1 + w1 // 2, y1 + h1)
             end = (x2 + w2 // 2, y2)
 
-        draw_straight_arrow(
+        draw_bezier_arrow(
             draw, start, end,
-            color=sc["border"],
-            width=2,
-            head_size=10,
-            dashed=True,
+            color=sc["border"], width=2, dashed=True,
+            curvature=0.15, label=None,
         )
 
     # Draw node cards ON TOP of arrows
@@ -284,9 +282,13 @@ def _render_whiteboard(
             radius=18,
         )
 
-        # Icon in top-right
+        # Icon in top-right with background (SwirlAI style)
         if node.icon:
-            paste_icon(img, node.icon.value, (x + w - 30, y + 28), 22, sc["border"])
+            icon_bg_size = min(36, h // 4)
+            icon_inner = int(icon_bg_size * 0.6)
+            draw_icon_with_bg(img, draw, node.icon.value, (x + w - 30, y + 28),
+                              icon_size=icon_inner, bg_size=icon_bg_size,
+                              icon_color="#FFFFFF", bg_color=sc["border"])
 
         # Label — adaptive font, no forced truncation
         max_label_w = w - 70  # account for step number + icon

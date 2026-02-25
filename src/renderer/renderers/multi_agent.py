@@ -18,11 +18,12 @@ from ..typography import get_font, text_size, draw_text_block
 from ..shapes import (
     draw_node, draw_node_with_header, draw_rounded_rect,
     draw_dashed_rect, draw_outer_border, draw_step_number,
+    draw_zone_group,
 )
-from ..arrows import draw_connection, draw_straight_arrow
+from ..arrows import draw_connection, draw_straight_arrow, draw_bezier_arrow
 from ..gradients import draw_gradient_bar
-from ..layout import layout_radial, get_node_center, get_node_edge
-from ..icons import paste_icon
+from ..layout import layout_radial, layout_force_directed, get_node_center, get_node_edge
+from ..icons import paste_icon, draw_icon_with_bg
 
 
 def render_multi_agent(
@@ -198,10 +199,26 @@ def _render_whiteboard(
     outer_nodes = data.nodes[1:]
     outer_ids = [n.id for n in outer_nodes]
 
-    positions = layout_radial(center_node.id, outer_ids, width, height, header_h)
+    positions = layout_force_directed(
+        data.nodes, data.connections, width, height,
+        margin=70, header_h=header_h, node_w=150, node_h=85,
+    )
     section_colors = theme.get("section_colors", [
         {"fill": "#E3F2FD", "border": "#2B7DE9", "text": "#1565C0"},
     ])
+
+    # Draw zones if available
+    if hasattr(data, 'zones') and data.zones:
+        from ..layout import layout_zone_based
+        positions, zone_rects = layout_zone_based(
+            data.zones, data.nodes, data.connections, width, height,
+            margin=70, header_h=header_h,
+        )
+        for zr in zone_rects:
+            zi = zone_rects.index(zr)
+            zsc = section_colors[zi % len(section_colors)]
+            draw_zone_group(img, draw, zr["bbox"], zr["name"], zsc)
+            draw = ImageDraw.Draw(img)  # refresh after zone overlay
 
     # Draw connections
     center_pos = positions.get(center_node.id)
@@ -221,10 +238,11 @@ def _render_whiteboard(
                         conn_label = conn.label
                         break
 
-                draw_connection(
-                    draw, start, end,
-                    style="dashed_arrow", label=conn_label,
-                    color=sc["border"], routing="straight", width=2,
+                flip = (i % 2 == 0)
+                draw_bezier_arrow(
+                    draw, start, end, color=sc["border"],
+                    width=2, dashed=True, curvature=0.2,
+                    label=conn_label, flip_curve=flip,
                 )
 
     # Draw outer nodes
@@ -245,9 +263,12 @@ def _render_whiteboard(
         cx_node = x + w // 2
 
         if node.icon:
-            icon_size = min(24, h // 4)
-            paste_icon(img, node.icon.value, (cx_node, content_y + icon_size // 2), icon_size, sc["border"])
-            content_y += icon_size + 4
+            icon_bg_size = min(40, h // 3)
+            icon_inner = int(icon_bg_size * 0.6)
+            draw_icon_with_bg(img, draw, node.icon.value, (cx_node, content_y + icon_bg_size // 2),
+                             icon_size=icon_inner, bg_size=icon_bg_size,
+                             icon_color="#FFFFFF", bg_color=sc["border"])
+            content_y += icon_bg_size + 4
 
         label_font = get_font(min(14, max(11, h // 6)), "bold")
         lw, lh = text_size(draw, node.label, label_font)
@@ -272,8 +293,11 @@ def _render_whiteboard(
         content_y = y + 12
 
         if center_node.icon:
-            paste_icon(img, center_node.icon.value, (cx_center, content_y + 14), 28, "#FFFFFF")
-            content_y += 32
+            draw_icon_with_bg(img, draw, center_node.icon.value, (cx_center, content_y + 18),
+                             icon_size=22, bg_size=36,
+                             icon_color="#FFFFFF", bg_color="#FFFFFF",
+                             border_color=sc0["border"])
+            content_y += 40
 
         label_font = get_font(18, "bold")
         lw, lh = text_size(draw, center_node.label, label_font)

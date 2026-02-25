@@ -7,7 +7,14 @@
       "Bash(gh auth:*)",
       "Bash(gh api:*)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(git stash pop:*)",
+      "Bash(python3:*)",
+      "Bash(ls:*)",
+      "Bash(python test_all_renderers.py:*)",
+      "Bash(python -c:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

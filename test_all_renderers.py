@@ -241,6 +241,59 @@ def make_rag_pipeline_data():
     )
 
 
+def make_zone_rag_data():
+    """Test with zones and curved arrows (new viral features)."""
+    nodes = [
+        Node(id="user", label="User", icon=IconName.USER,
+             description="Sends questions through a chat interface",
+             zone="Query Phase"),
+        Node(id="docs", label="Documents", icon=IconName.DOCUMENT,
+             description="Source PDFs, web pages, knowledge base articles",
+             zone="Ingestion Phase"),
+        Node(id="chunker", label="Chunking", icon=IconName.FILTER,
+             description="Splits documents into semantic chunks with overlap",
+             zone="Ingestion Phase"),
+        Node(id="embedder", label="Embedding", icon=IconName.EMBEDDING,
+             shape=NodeShape.HEXAGON,
+             description="Converts chunks into vectors using transformers",
+             zone="Ingestion Phase"),
+        Node(id="vectordb", label="Vector DB", icon=IconName.VECTOR_DB,
+             shape=NodeShape.CYLINDER,
+             description="Stores and indexes embeddings for fast search",
+             zone="Ingestion Phase"),
+        Node(id="retriever", label="Retriever", icon=IconName.SEARCH,
+             description="Semantic similarity search for relevant context",
+             zone="Query Phase"),
+        Node(id="llm", label="LLM", icon=IconName.LLM,
+             shape=NodeShape.HEXAGON,
+             description="Generates response using retrieved chunks and query",
+             zone="Query Phase"),
+        Node(id="response", label="Response", icon=IconName.CHAT,
+             description="Final answer with source citations",
+             zone="Query Phase"),
+    ]
+    return InfographicData(
+        title="RAG Chatbot Architecture",
+        subtitle="Two-phase: ingestion and real-time query",
+        type=InfographicType.ARCHITECTURE,
+        nodes=nodes,
+        zones=[
+            {"name": "Ingestion Phase", "color": "#2B7DE9", "nodes": ["docs", "chunker", "embedder", "vectordb"]},
+            {"name": "Query Phase", "color": "#E8833A", "nodes": ["user", "retriever", "llm", "response"]},
+        ],
+        connections=[
+            Connection(from_node="docs", to_node="chunker", label="raw text", style=ConnectionStyle.DASHED_ARROW),
+            Connection(from_node="chunker", to_node="embedder", label="chunks", style=ConnectionStyle.DASHED_ARROW),
+            Connection(from_node="embedder", to_node="vectordb", label="vectors", style=ConnectionStyle.DASHED_ARROW),
+            Connection(from_node="user", to_node="retriever", label="query", style=ConnectionStyle.CURVED_ARROW),
+            Connection(from_node="vectordb", to_node="retriever", label="top-k", style=ConnectionStyle.CURVED_DASHED),
+            Connection(from_node="retriever", to_node="llm", label="context", style=ConnectionStyle.DASHED_ARROW),
+            Connection(from_node="llm", to_node="response", label="answer", style=ConnectionStyle.DASHED_ARROW),
+            Connection(from_node="response", to_node="user", label="reply", style=ConnectionStyle.CURVED_DASHED),
+        ],
+    )
+
+
 # ==== RUN TESTS ====
 
 themes = ["guidebook", "whiteboard", "dark_modern"]
@@ -255,6 +308,7 @@ test_cases = [
     ("multi_agent", make_multi_agent_data),
     ("infographic", make_infographic_data),
     ("rag_pipeline", make_rag_pipeline_data),
+    ("zone_rag", make_zone_rag_data),
 ]
 
 errors = []
@@ -282,4 +336,5 @@ if errors:
     for e in errors:
         print(f"  ❌ {e}")
 else:
-    print("All 27 renderer combinations working correctly! 🎉")
+    total = len(test_cases) * len(themes)
+    print(f"All {total} renderer combinations working correctly!")

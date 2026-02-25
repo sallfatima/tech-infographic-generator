@@ -15,7 +15,8 @@ from ..shapes import (
     draw_outer_border, draw_step_number,
 )
 from ..gradients import draw_gradient_bar, draw_gradient_rect
-from ..icons import paste_icon
+from ..icons import paste_icon, draw_icon_with_bg
+from ..arrows import draw_bezier_arrow
 from ..layout import layout_grid
 
 
@@ -206,10 +207,13 @@ def _render_whiteboard(
         # Content layout
         content_y = y + 15
 
-        # Icon (left side) + Label (right of icon)
+        # Icon with background (SwirlAI style) + Label (right of icon)
         if node.icon:
-            icon_size = min(32, h // 4)
-            paste_icon(img, node.icon.value, (x + 28, content_y + icon_size // 2 + 2), icon_size, sc["border"])
+            icon_bg_size = min(36, h // 4)
+            icon_inner = int(icon_bg_size * 0.6)
+            draw_icon_with_bg(img, draw, node.icon.value, (x + 28, content_y + icon_bg_size // 2 + 2),
+                              icon_size=icon_inner, bg_size=icon_bg_size,
+                              icon_color="#FFFFFF", bg_color=sc["border"])
             label_x = x + 55
         else:
             label_x = x + 18

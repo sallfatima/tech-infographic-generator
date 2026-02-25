@@ -15,7 +15,8 @@ from ..shapes import (
     draw_section_box, draw_outer_border,
 )
 from ..gradients import draw_gradient_bar, draw_gradient_rect
-from ..icons import paste_icon
+from ..icons import paste_icon, draw_icon_with_bg
+from ..arrows import draw_bezier_arrow
 from ..typography import wrap_text
 
 
@@ -341,9 +342,13 @@ def _render_whiteboard(
                 fill=hex_to_rgb(sc["border"]),
             )
 
-            # Icon
+            # Icon with background (SwirlAI style)
             if node.icon:
-                paste_icon(img, node.icon.value, (col_x + 32, item_y + 18), 18, sc["border"])
+                icon_bg_size = min(36, item_h // 4)
+                icon_inner = int(icon_bg_size * 0.6)
+                draw_icon_with_bg(img, draw, node.icon.value, (col_x + 32, item_y + 18),
+                                  icon_size=icon_inner, bg_size=icon_bg_size,
+                                  icon_color="#FFFFFF", bg_color=sc["border"])
 
             # Label
             label_x = col_x + (50 if node.icon else 28)

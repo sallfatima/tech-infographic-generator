@@ -14,9 +14,9 @@ from ..shapes import (
     draw_rounded_rect, draw_node, draw_node_with_header, draw_dashed_rect,
     draw_section_box, draw_step_number, draw_outer_border, draw_numbered_badge,
 )
-from ..arrows import draw_straight_arrow, draw_numbered_arrow
+from ..arrows import draw_straight_arrow, draw_numbered_arrow, draw_bezier_arrow
 from ..gradients import draw_gradient_bar
-from ..icons import paste_icon
+from ..icons import paste_icon, draw_icon_with_bg
 from ..layout import measure_content_heights
 
 
@@ -229,7 +229,26 @@ def _render_whiteboard(
     stage_h = max(content_heights.values())
     max_available = height - header_h - margin - 30
     stage_h = min(stage_h, max_available)
-    cy = header_h + stage_h // 2 + 15
+    # Center stages vertically in the available space
+    cy = header_h + (height - header_h - margin) // 2
+
+    # Zone support: render zone groups as background regions behind stages
+    if hasattr(data, 'zones') and data.zones:
+        from ..shapes import draw_zone_group
+        from ..layout import layout_zone_based
+        _node_positions, zone_rects = layout_zone_based(
+            data.zones, data.nodes, data.connections,
+            width, height, margin=margin, header_h=header_h,
+        )
+        for zr in zone_rects:
+            zsc = zr.get("color_scheme", section_colors[0])
+            draw_zone_group(
+                img, draw,
+                bbox=zr["bbox"],
+                title=zr.get("name", ""),
+                color_scheme=zsc,
+                dashed=True,
+            )
 
     for i, node in enumerate(data.nodes):
         sc = section_colors[i % len(section_colors)]
@@ -249,13 +268,18 @@ def _render_whiteboard(
             border_width=2,
         )
 
-        # Icon centered in the top area
-        icon_y = sy + 40
+        # Icon centered in the top area — prominent with colored background
+        content_y = sy + 40
         if node.icon:
-            paste_icon(img, node.icon.value, (sx + stage_w // 2, icon_y + 16), 32, sc["border"])
-            icon_y += 50
+            icon_bg_size = min(38, stage_h // 4)
+            icon_inner = int(icon_bg_size * 0.6)
+            draw_icon_with_bg(img, draw, node.icon.value, (sx + stage_w // 2, content_y + icon_bg_size // 2),
+                             icon_size=icon_inner, bg_size=icon_bg_size,
+                             icon_color="#FFFFFF", bg_color=sc["border"])
+            content_y += icon_bg_size + 4
         else:
-            icon_y += 15
+            content_y += 15
+        icon_y = content_y
 
         # Label centered — adaptive font, no forced truncation
         max_label_w = stage_w - 24
@@ -299,26 +323,42 @@ def _render_whiteboard(
                 align="center",
             )
 
-        # Dashed arrow to next stage with step number
+        # Bezier arrow to next stage with connection label
         if i < n - 1:
-            ax_start = sx + stage_w + 5
-            ax_end = ax_start + arrow_gap - 10
-            ay = cy
+            prev_x = sx
+            prev_w = stage_w
+            curr_x = margin + (i + 1) * (stage_w + arrow_gap)
+            curr_y = cy - stage_h // 2
 
-            draw_straight_arrow(
+            # Find connection label from data.connections
+            conn_label = None
+            if data.connections:
+                next_node = data.nodes[i + 1]
+                for conn in data.connections:
+                    if conn.from_node == node.id and conn.to_node == next_node.id:
+                        conn_label = conn.label
+                        break
+                # Fallback: try matching by position if IDs don't match
+                if conn_label is None:
+                    for conn in data.connections:
+                        if conn.from_node == node.id:
+                            conn_label = conn.label
+                            break
+
+            draw_bezier_arrow(
                 draw,
-                (ax_start, ay),
-                (ax_end, ay),
-                color=sc["border"],
-                width=3,
-                head_size=12,
-                dashed=True,
+                (prev_x + prev_w, sy + stage_h // 2),
+                (curr_x, curr_y + stage_h // 2),
+                color=sc["border"], width=2, dashed=True,
+                curvature=0.15, label=conn_label,
             )
 
-            # Step number on arrow
+            # Step number on arrow (retained for visual continuity)
+            ax_start = sx + stage_w + 5
+            ax_end = ax_start + arrow_gap - 10
             draw_step_number(
                 draw,
-                ((ax_start + ax_end) // 2, ay - 18),
+                ((ax_start + ax_end) // 2, cy - 18),
                 i + 1,
                 bg_color="#FFFFFF",
                 border_color=sc["border"],

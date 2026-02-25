@@ -19,9 +19,9 @@ from ..shapes import (
     draw_dashed_rect, draw_section_box, draw_step_number,
     draw_outer_border, draw_numbered_badge,
 )
-from ..arrows import draw_straight_arrow, draw_numbered_arrow
+from ..arrows import draw_straight_arrow, draw_numbered_arrow, draw_bezier_arrow
 from ..gradients import draw_gradient_bar
-from ..icons import paste_icon
+from ..icons import paste_icon, draw_icon_with_bg
 from ..layout import measure_content_heights
 
 
@@ -236,7 +236,8 @@ def _render_whiteboard(
     stage_h = max(content_heights.values())
     max_available = height - header_h - margin - 30
     stage_h = min(stage_h, max_available)
-    cy = header_h + stage_h // 2 + 15
+    # Center stages vertically in the available space
+    cy = header_h + (height - header_h - margin) // 2
 
     for i, node in enumerate(data.nodes):
         sc = section_colors[i % len(section_colors)]
@@ -253,7 +254,12 @@ def _render_whiteboard(
 
         icon_y = sy + 40
         if node.icon:
-            paste_icon(img, node.icon.value, (sx + stage_w // 2, icon_y + 16), 32, sc["border"])
+            icon_bg_size = min(36, stage_h // 4)
+            icon_inner = int(icon_bg_size * 0.6)
+            cx = sx + stage_w // 2
+            draw_icon_with_bg(img, draw, node.icon.value, (cx, icon_y + 16),
+                              icon_size=icon_inner, bg_size=icon_bg_size,
+                              icon_color="#FFFFFF", bg_color=sc["border"])
             icon_y += 50
         else:
             icon_y += 15
@@ -292,9 +298,10 @@ def _render_whiteboard(
             ax_end = ax_start + arrow_gap - 10
             ay = cy
 
-            draw_straight_arrow(
+            draw_bezier_arrow(
                 draw, (ax_start, ay), (ax_end, ay),
-                color=sc["border"], width=3, head_size=12, dashed=True,
+                color=sc["border"], width=2, dashed=True,
+                curvature=0.15, label=None,
             )
             draw_step_number(
                 draw, ((ax_start + ax_end) // 2, ay - 18),

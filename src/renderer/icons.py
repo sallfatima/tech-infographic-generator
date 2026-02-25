@@ -84,3 +84,49 @@ def paste_icon(
     # Center the icon at the position
     x, y = pos
     canvas.paste(icon, (x - size // 2, y - size // 2), icon)
+
+
+def draw_icon_with_bg(
+    canvas: Image.Image,
+    draw,
+    name: str,
+    pos: tuple[int, int],
+    icon_size: int = 28,
+    bg_size: int = 48,
+    icon_color: str = "#FFFFFF",
+    bg_color: str = "#2B7DE9",
+    bg_shape: str = "circle",
+    border_color: str | None = None,
+    border_width: int = 2,
+) -> None:
+    """Draw a prominent icon with a colored background shape (SwirlAI style).
+
+    Creates a colored circle or rounded rect behind the icon, making
+    icons much more visually prominent — like in reference infographics.
+    """
+    from .themes import hex_to_rgb
+
+    cx, cy = pos
+    half = bg_size // 2
+
+    if bg_shape == "circle":
+        # Draw bg circle
+        draw.ellipse(
+            (cx - half, cy - half, cx + half, cy + half),
+            fill=hex_to_rgb(bg_color),
+            outline=hex_to_rgb(border_color) if border_color else None,
+            width=border_width,
+        )
+    else:
+        # Rounded rect background
+        r = bg_size // 4
+        draw.rounded_rectangle(
+            (cx - half, cy - half, cx + half, cy + half),
+            radius=r,
+            fill=hex_to_rgb(bg_color),
+            outline=hex_to_rgb(border_color) if border_color else None,
+            width=border_width,
+        )
+
+    # Paste icon on top (white on colored bg)
+    paste_icon(canvas, name, (cx, cy), icon_size, icon_color)

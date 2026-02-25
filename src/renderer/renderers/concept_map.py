@@ -14,7 +14,8 @@ from ..shapes import (
     draw_node, draw_node_with_header, draw_rounded_rect, draw_dashed_rect,
     draw_outer_border, draw_step_number, draw_numbered_badge,
 )
-from ..arrows import draw_straight_arrow, draw_connection, draw_numbered_arrow
+from ..arrows import draw_straight_arrow, draw_connection, draw_numbered_arrow, draw_bezier_arrow
+from ..icons import draw_icon_with_bg
 from ..gradients import draw_gradient_bar
 from ..layout import layout_radial, get_node_center, get_node_edge
 
@@ -247,11 +248,10 @@ def _render_whiteboard(
                         conn_label = conn.label
                         break
 
-                draw_connection(
+                draw_bezier_arrow(
                     draw, start, end,
-                    style=conn_style, label=conn_label,
-                    color=sc["border"], routing="straight",
-                    width=2,
+                    color=sc["border"], width=2, dashed=True,
+                    curvature=0.15, label=conn_label,
                 )
 
     # Draw outer nodes with colored dashed borders
@@ -279,12 +279,14 @@ def _render_whiteboard(
         content_y = y + padding + 4
         cx_node = x + w // 2
 
-        # Icon
+        # Icon with background (SwirlAI style)
         if node.icon:
-            from ..icons import paste_icon
-            icon_size = min(24, h // 4)
-            paste_icon(img, node.icon.value, (cx_node, content_y + icon_size // 2), icon_size, sc["border"])
-            content_y += icon_size + 4
+            icon_bg_size = min(36, h // 4)
+            icon_inner = int(icon_bg_size * 0.6)
+            draw_icon_with_bg(img, draw, node.icon.value, (cx_node, content_y + icon_bg_size // 2),
+                              icon_size=icon_inner, bg_size=icon_bg_size,
+                              icon_color="#FFFFFF", bg_color=sc["border"])
+            content_y += icon_bg_size + 4
 
         # Label
         label_font = get_font(min(14, max(11, h // 6)), "bold")
@@ -332,8 +334,11 @@ def _render_whiteboard(
         content_y = y + 12
 
         if center_node.icon:
-            from ..icons import paste_icon
-            paste_icon(img, center_node.icon.value, (cx_center, content_y + 14), 28, "#FFFFFF")
+            icon_bg_size = min(36, h // 4)
+            icon_inner = int(icon_bg_size * 0.6)
+            draw_icon_with_bg(img, draw, center_node.icon.value, (cx_center, content_y + 14),
+                              icon_size=icon_inner, bg_size=icon_bg_size,
+                              icon_color="#FFFFFF", bg_color=sc0["border"])
             content_y += 32
 
         label_font = get_font(18, "bold")

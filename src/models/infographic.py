@@ -28,6 +28,8 @@ class ConnectionStyle(str, Enum):
     DASHED_ARROW = "dashed_arrow"
     BIDIRECTIONAL = "bidirectional"
     LINE = "line"
+    CURVED_ARROW = "curved_arrow"
+    CURVED_DASHED = "curved_dashed"
 
 
 class NodeShape(str, Enum):
@@ -39,6 +41,7 @@ class NodeShape(str, Enum):
     HEXAGON = "hexagon"
     CLOUD = "cloud"
     PARALLELOGRAM = "parallelogram"
+    PERSON = "person"
 
 
 class IconName(str, Enum):
@@ -88,6 +91,10 @@ class IconName(str, Enum):
     MCP = "mcp"
     MULTI_AGENT = "multi_agent"
     REASONING = "reasoning"
+    # Additional visual icons
+    PERSON_LAPTOP = "person_laptop"
+    CHAT = "chat"
+    PIPELINE_ICON = "pipeline_icon"
 
 
 class Node(BaseModel):
@@ -99,6 +106,8 @@ class Node(BaseModel):
     color: Optional[str] = Field(default=None, description="Hex color override")
     layer: Optional[int] = Field(default=None, description="Layer index (0=top)")
     group: Optional[str] = Field(default=None, description="Grouping label")
+    zone: Optional[str] = Field(default=None, description="Zone name for visual grouping")
+    size: Optional[str] = Field(default=None, description="Node size: small/medium/large")
 
 
 class Connection(BaseModel):
@@ -126,6 +135,7 @@ class InfographicData(BaseModel):
     nodes: list[Node]
     connections: list[Connection] = []
     layers: list[Layer] = []
+    zones: list[dict] = Field(default=[], description="Zone defs: [{name, color, nodes}]")
     color_scheme: str = "tech_blue"
     footer: Optional[str] = None
     metadata: dict = {}

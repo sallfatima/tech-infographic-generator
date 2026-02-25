@@ -503,3 +503,143 @@ def draw_node(
             max_lines=available_lines,
             align="center",
         )
+
+
+# ---------------------------------------------------------------------------
+# Zone grouping (SwirlAI viral style)
+# ---------------------------------------------------------------------------
+
+def draw_zone_group(
+    img: Image.Image,
+    draw: ImageDraw.Draw,
+    bbox: tuple[int, int, int, int],
+    title: str,
+    color_scheme: dict,
+    dashed: bool = True,
+    corner_radius: int = 10,
+    alpha: int = 40,
+) -> None:
+    """Draw a complete zone group with semi-transparent fill and title on border.
+
+    This creates the colored dashed regions seen in SwirlAI/ByteByteGo
+    infographics: a dashed rectangle with light colored fill and a title
+    label that sits on the top border in a white pill.
+
+    Args:
+        color_scheme: {"fill": "#E3F2FD", "border": "#2B7DE9", "text": "#1565C0"}
+        alpha: fill opacity (0-255), default 40 for subtle tinting
+    """
+    x0, y0, x1, y1 = bbox
+    fill_color = color_scheme.get("fill", "#E3F2FD")
+    border_color = color_scheme.get("border", "#2B7DE9")
+    text_color = color_scheme.get("text", "#1565C0")
+
+    # Semi-transparent fill using RGBA overlay
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    overlay_draw = ImageDraw.Draw(overlay)
+    fill_rgba = hex_to_rgba(fill_color, alpha)
+    overlay_draw.rounded_rectangle(bbox, radius=corner_radius, fill=fill_rgba)
+    img.paste(Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB"), (0, 0))
+
+    # Redraw context after paste
+    draw = ImageDraw.Draw(img)
+
+    # Dashed border
+    if dashed:
+        draw_dashed_rect(draw, bbox, border_color, width=2, dash=10, gap=6, radius=corner_radius)
+    else:
+        draw.rounded_rectangle(bbox, radius=corner_radius, outline=hex_to_rgb(border_color), width=2)
+
+    # Title label ON the top border (SwirlAI style — white pill straddling the border)
+    if title:
+        title_font = get_font(14, "bold")
+        tw, th = text_size(draw, title, title_font)
+        pad = 8
+        # Position: centered on top border, slightly inside
+        tx = x0 + 25
+        ty = y0 - th // 2 - 1
+
+        # White pill background
+        draw.rounded_rectangle(
+            (tx - pad, ty - 3, tx + tw + pad, ty + th + 5),
+            radius=5,
+            fill=hex_to_rgb("#FFFFFF"),
+            outline=hex_to_rgb(border_color),
+            width=1,
+        )
+        draw.text((tx, ty), title, fill=hex_to_rgb(text_color), font=title_font)
+
+    return draw  # return updated draw context
+
+
+def draw_legend_box(
+    draw: ImageDraw.Draw,
+    position: tuple[int, int],
+    items: list[dict],
+    bg_color: str = "#FFFFFF",
+    border_color: str = "#CCCCCC",
+) -> None:
+    """Draw a legend/key box showing arrow type meanings.
+
+    Args:
+        position: (x, y) top-left corner
+        items: [{"color": "#2B7DE9", "label": "Data flow", "style": "dashed"},
+                {"color": "#E8833A", "label": "Trigger", "style": "dotted"}]
+    """
+    if not items:
+        return
+
+    font = get_font(10, "regular")
+    line_h = 18
+    padding = 10
+    sample_w = 30  # width of the line sample
+
+    # Measure total size
+    max_label_w = 0
+    for item in items:
+        lw, _ = text_size(draw, item.get("label", ""), font)
+        max_label_w = max(max_label_w, lw)
+
+    box_w = padding * 2 + sample_w + 10 + max_label_w + 10
+    box_h = padding * 2 + len(items) * line_h
+
+    lx, ly = position
+
+    # Background
+    draw.rounded_rectangle(
+        (lx, ly, lx + box_w, ly + box_h),
+        radius=6,
+        fill=hex_to_rgb(bg_color),
+        outline=hex_to_rgb(border_color),
+        width=1,
+    )
+
+    # Draw items
+    cy = ly + padding
+    for item in items:
+        color = item.get("color", "#333333")
+        label = item.get("label", "")
+        style = item.get("style", "solid")
+        color_rgb = hex_to_rgb(color)
+
+        # Line sample
+        sx = lx + padding
+        sy = cy + line_h // 2
+        ex = sx + sample_w
+
+        if style == "dashed":
+            from .arrows import _draw_dashed_line
+            _draw_dashed_line(draw, (sx, sy), (ex, sy), color_rgb, 2, dash_length=6, gap_length=4)
+        elif style == "dotted":
+            from .arrows import _draw_dashed_line
+            _draw_dashed_line(draw, (sx, sy), (ex, sy), color_rgb, 2, dash_length=2, gap_length=3)
+        else:
+            draw.line([(sx, sy), (ex, sy)], fill=color_rgb, width=2)
+
+        # Arrow tip on sample
+        from .arrows import _draw_arrowhead
+        _draw_arrowhead(draw, (ex, sy), 0, 6, color_rgb)
+
+        # Label text
+        draw.text((ex + 10, cy + 1), label, fill=hex_to_rgb("#333333"), font=font)
+        cy += line_h

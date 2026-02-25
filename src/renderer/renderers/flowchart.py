@@ -13,10 +13,10 @@ from ..shapes import (
     draw_node, draw_node_with_header, draw_rounded_rect, draw_dashed_rect,
     draw_section_box, draw_step_number, draw_outer_border, draw_numbered_badge,
 )
-from ..arrows import draw_straight_arrow, draw_connection, draw_numbered_arrow
+from ..arrows import draw_straight_arrow, draw_connection, draw_numbered_arrow, draw_bezier_arrow
 from ..gradients import draw_gradient_bar
 from ..layout import layout_flow_horizontal, get_node_center, get_node_right, get_node_left
-from ..icons import paste_icon
+from ..icons import paste_icon, draw_icon_with_bg
 
 
 def render_flowchart(
@@ -262,12 +262,10 @@ def _render_whiteboard(
                     label = conn.label
                     break
 
-            draw_straight_arrow(
+            draw_bezier_arrow(
                 draw, start, end,
-                color=conn_color,
-                width=3,
-                head_size=12,
-                dashed=True,
+                color=conn_color, width=2, dashed=True,
+                curvature=0.15, label=label,
             )
 
     # Draw nodes with section-colored borders and step numbers

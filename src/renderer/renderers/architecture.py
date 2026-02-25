@@ -15,7 +15,8 @@ from ..shapes import (
     draw_rounded_rect, draw_node, draw_node_with_header, draw_dashed_rect,
     draw_section_box, draw_step_number, draw_outer_border, draw_numbered_badge,
 )
-from ..arrows import draw_connection, draw_straight_arrow, draw_numbered_arrow
+from ..arrows import draw_connection, draw_straight_arrow, draw_numbered_arrow, draw_bezier_arrow
+from ..icons import draw_icon_with_bg
 from ..gradients import draw_gradient_bar
 from ..layout import (
     layout_layered, get_node_center, get_node_edge,
@@ -88,9 +89,23 @@ def _render_guidebook(
         )
         header_h = 95
 
-    # Build layers data
-    layers_data = [{"name": l.name, "nodes": l.nodes, "color": l.color} for l in data.layers]
+    # Build layers data — support both data.layers and data.zones
+    if data.layers:
+        layers_data = [{"name": l.name, "nodes": l.nodes, "color": l.color} for l in data.layers]
+    elif data.zones:
+        layers_data = [
+            {"name": z.get("name", f"Zone {i+1}"), "nodes": z.get("nodes", []), "color": z.get("color")}
+            for i, z in enumerate(data.zones)
+        ]
+    else:
+        layers_data = [{"name": data.title, "nodes": [n.id for n in data.nodes], "color": None}]
     nodes_dict = {n.id: n for n in data.nodes}
+
+    # Create synthetic Layer objects for rendering if we only have zones
+    effective_layers = data.layers if data.layers else [
+        type("Layer", (), {"name": ld["name"], "nodes": ld["nodes"], "color": ld.get("color")})()
+        for ld in layers_data
+    ]
 
     # Calculate positions
     positions = layout_layered(layers_data, data.nodes, width, height, margin, header_h)
@@ -101,14 +116,14 @@ def _render_guidebook(
     ])
 
     # Draw layer section boxes with colored left accent bar (guidebook style)
-    n_layers = len(data.layers)
+    n_layers = len(effective_layers)
     layer_boxes = {}
     if n_layers > 0:
         available_h = height - header_h - 30
         layer_h = available_h // n_layers
         layer_gap = 10
 
-        for li, layer in enumerate(data.layers):
+        for li, layer in enumerate(effective_layers):
             ly = header_h + li * layer_h
             sc = section_colors[li % len(section_colors)]
 
@@ -137,7 +152,7 @@ def _render_guidebook(
 
     # Node styling
     node_layer_map = {}
-    for li, layer in enumerate(data.layers):
+    for li, layer in enumerate(effective_layers):
         for nid in layer.nodes:
             node_layer_map[nid] = li
 
@@ -296,9 +311,23 @@ def _render_whiteboard(
         )
         header_h = 105
 
-    # Build layers data
-    layers_data = [{"name": l.name, "nodes": l.nodes, "color": l.color} for l in data.layers]
+    # Build layers data — support both data.layers and data.zones
+    if data.layers:
+        layers_data = [{"name": l.name, "nodes": l.nodes, "color": l.color} for l in data.layers]
+    elif data.zones:
+        layers_data = [
+            {"name": z.get("name", f"Zone {i+1}"), "nodes": z.get("nodes", []), "color": z.get("color")}
+            for i, z in enumerate(data.zones)
+        ]
+    else:
+        layers_data = [{"name": data.title, "nodes": [n.id for n in data.nodes], "color": None}]
     nodes_dict = {n.id: n for n in data.nodes}
+
+    # Create synthetic Layer objects for rendering if we only have zones
+    effective_layers = data.layers if data.layers else [
+        type("Layer", (), {"name": ld["name"], "nodes": ld["nodes"], "color": ld.get("color")})()
+        for ld in layers_data
+    ]
 
     # Calculate positions
     positions = layout_layered(layers_data, data.nodes, width, height, margin, header_h)
@@ -309,14 +338,14 @@ def _render_whiteboard(
     ])
 
     # Draw layer section boxes (dashed colored borders)
-    n_layers = len(data.layers)
+    n_layers = len(effective_layers)
     layer_boxes = {}
     if n_layers > 0:
         available_h = height - header_h - 35
         layer_h = available_h // n_layers
         layer_gap = 12
 
-        for li, layer in enumerate(data.layers):
+        for li, layer in enumerate(effective_layers):
             ly = header_h + li * layer_h
             sc = section_colors[li % len(section_colors)]
 
@@ -336,7 +365,7 @@ def _render_whiteboard(
 
     # Node styling for whiteboard
     node_layer_map = {}
-    for li, layer in enumerate(data.layers):
+    for li, layer in enumerate(effective_layers):
         for nid in layer.nodes:
             node_layer_map[nid] = li
 
@@ -425,29 +454,25 @@ def _render_whiteboard(
                     end = get_node_right(to_pos)
                 routing = "straight"
 
-            # Use dashed arrows for whiteboard style
-            style = conn.style.value if conn.style else "dashed_arrow"
-            draw_connection(
+            # Use bezier dashed arrows for whiteboard style (SwirlAI)
+            draw_bezier_arrow(
                 draw, start, end,
-                style=style,
-                label=conn.label,
-                color=conn_color,
-                routing=routing,
-                width=2,
+                color=conn_color, width=2, dashed=True,
+                curvature=0.15, label=conn.label,
             )
 
-            # Draw step number on connection
-            if conn.label:
-                mid_x = (start[0] + end[0]) // 2
-                mid_y = (start[1] + end[1]) // 2
-                draw_step_number(
-                    draw, (mid_x - 20, mid_y),
-                    ci + 1,
-                    bg_color="#FFFFFF",
-                    border_color=conn_color,
-                    text_color=conn_color,
-                    radius=13,
-                )
+            # Draw step number near the start of the connection (not mid to avoid label overlap)
+            t = 0.25  # 25% along the path
+            num_x = int(start[0] + t * (end[0] - start[0]))
+            num_y = int(start[1] + t * (end[1] - start[1]))
+            draw_step_number(
+                draw, (num_x - 13, num_y - 13),
+                ci + 1,
+                bg_color="#FFFFFF",
+                border_color=conn_color,
+                text_color=conn_color,
+                radius=13,
+            )
 
     # Footer
     if data.footer:
