@@ -1,12 +1,13 @@
 /**
  * App.tsx — Layout principal de l'application.
  *
- * Phase 3 : Toolbar + NodeEditor + raccourcis clavier (Ctrl+Z, Delete, Escape).
+ * Phase 4 : Toolbar + NodeEditor + raccourcis clavier + Ctrl+S export SVG.
  * Layout : TextInput à gauche (1/3) | Toolbar + DiagramCanvas à droite (2/3).
  */
 
 import { useEffect } from "react";
 import { useDiagramState, useTemporalStore } from "./hooks/useDiagramState";
+import { useExport } from "./hooks/useExport";
 import TextInput from "./components/Editor/TextInput";
 import DiagramCanvas from "./components/Diagram/DiagramCanvas";
 import Toolbar from "./components/Editor/Toolbar";
@@ -18,6 +19,7 @@ function App() {
   const selectNode = useDiagramState((s) => s.selectNode);
   const deleteNode = useDiagramState((s) => s.deleteNode);
   const temporal = useTemporalStore();
+  const { exportSvg } = useExport();
 
   // ─── Raccourcis clavier globaux ──────────────────────────────────
   useEffect(() => {
@@ -41,6 +43,11 @@ function App() {
         e.preventDefault();
         deleteNode(selectedNodeId);
       }
+      // Ctrl+S → export SVG
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        exportSvg();
+      }
       // Escape → désélectionner
       if (e.key === "Escape") {
         selectNode(null);
@@ -49,7 +56,7 @@ function App() {
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [selectedNodeId, selectNode, deleteNode, temporal]);
+  }, [selectedNodeId, selectNode, deleteNode, temporal, exportSvg]);
 
   return (
     <div className="min-h-screen flex flex-col">

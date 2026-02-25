@@ -1,12 +1,13 @@
 /**
  * Toolbar — Barre d'outils horizontale au-dessus du canvas.
  *
- * Phase 3 : thème, layout, undo/redo, zoom, fit.
+ * Phase 4 : thème, layout, undo/redo, zoom, fit + ExportButton.
  * Style compact : icônes + labels courts.
  */
 
 import { useDiagramState, useTemporalStore } from "../../hooks/useDiagramState";
 import { listThemeNames } from "../../lib/themes";
+import ExportButton from "../Export/ExportButton";
 
 const THEME_NAMES = listThemeNames();
 
@@ -141,6 +142,12 @@ export default function Toolbar() {
           </svg>
         </button>
       </div>
+
+      {/* Spacer → pousse l'export à droite */}
+      <div className="flex-1" />
+
+      {/* ─── Export ─── */}
+      <ExportButton />
     </div>
   );
 }

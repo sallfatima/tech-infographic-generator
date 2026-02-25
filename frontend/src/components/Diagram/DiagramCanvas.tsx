@@ -1,11 +1,12 @@
 /**
  * DiagramCanvas — SVG container principal avec rendu Rough.js.
  *
- * Phase 3 : drag-drop des nodes, édition inline, sélection, zoom/pan.
+ * Phase 4 : Framer Motion animations (progressive node/edge appearance).
  * Les positions viennent du Zustand store (pas du layout local).
  */
 
 import { useMemo, useRef, useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { RoughSVG } from "roughjs/bin/svg";
 import { createRoughSvg } from "../../lib/roughRenderer";
 import { getTheme } from "../../lib/themes";
@@ -17,6 +18,33 @@ import ZoneBox from "./ZoneBox";
 /** Dimensions du canvas SVG. */
 const CANVAS_W = 1400;
 const CANVAS_H = 900;
+
+/** Variants Framer Motion pour les nodes (apparition progressive). */
+const nodeVariants = {
+  hidden: { opacity: 0, scale: 0.7 },
+  visible: (i: number) => ({
+    opacity: 1,
+    scale: 1,
+    transition: {
+      delay: i * 0.08,
+      duration: 0.4,
+      ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
+    },
+  }),
+  exit: { opacity: 0, scale: 0.8, transition: { duration: 0.2 } },
+};
+
+/** Variants pour les edges (apparition après les nodes). */
+const edgeVariants = {
+  hidden: { opacity: 0 },
+  visible: (i: number) => ({
+    opacity: 1,
+    transition: {
+      delay: 0.3 + i * 0.06,
+      duration: 0.3,
+    },
+  }),
+};
 
 export default function DiagramCanvas() {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -234,58 +262,77 @@ export default function DiagramCanvas() {
           );
         })}
 
-        {/* Connections */}
-        {rc &&
-          data.connections.map((conn, i) => {
-            const fromPos = positions[conn.from_node];
-            const toPos = positions[conn.to_node];
-            if (!fromPos || !toPos) return null;
+        {/* Connections avec animation Framer Motion */}
+        <AnimatePresence>
+          {rc &&
+            data.connections.map((conn, i) => {
+              const fromPos = positions[conn.from_node];
+              const toPos = positions[conn.to_node];
+              if (!fromPos || !toPos) return null;
 
-            const sc = theme.sectionColors[i % theme.sectionColors.length];
+              const sc = theme.sectionColors[i % theme.sectionColors.length];
 
-            return (
-              <RoughEdge
-                key={`edge-${i}`}
-                rc={rc}
-                fromPos={fromPos}
-                toPos={toPos}
-                label={conn.label}
-                style={conn.style}
-                index={i}
-                theme={theme}
-                borderColor={sc.border}
-              />
-            );
-          })}
+              return (
+                <motion.g
+                  key={`edge-${i}`}
+                  custom={i}
+                  variants={edgeVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  <RoughEdge
+                    rc={rc}
+                    fromPos={fromPos}
+                    toPos={toPos}
+                    label={conn.label}
+                    style={conn.style}
+                    index={i}
+                    theme={theme}
+                    borderColor={sc.border}
+                  />
+                </motion.g>
+              );
+            })}
+        </AnimatePresence>
 
-        {/* Nodes */}
-        {rc &&
-          data.nodes.map((node, i) => {
-            const pos = positions[node.id];
-            if (!pos) return null;
+        {/* Nodes avec animation Framer Motion */}
+        <AnimatePresence>
+          {rc &&
+            data.nodes.map((node, i) => {
+              const pos = positions[node.id];
+              if (!pos) return null;
 
-            const sc = theme.sectionColors[i % theme.sectionColors.length];
+              const sc = theme.sectionColors[i % theme.sectionColors.length];
 
-            return (
-              <RoughNode
-                key={node.id}
-                rc={rc}
-                nodeId={node.id}
-                label={node.label}
-                description={node.description}
-                shape={node.shape}
-                icon={node.icon}
-                pos={pos}
-                fillColor={node.color ?? sc.fill}
-                borderColor={sc.border}
-                theme={theme}
-                isSelected={selectedNodeId === node.id}
-                onSelect={selectNode}
-                onDragStart={handleDragStart}
-                onDoubleClick={handleDoubleClick}
-              />
-            );
-          })}
+              return (
+                <motion.g
+                  key={node.id}
+                  custom={i}
+                  variants={nodeVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                >
+                  <RoughNode
+                    rc={rc}
+                    nodeId={node.id}
+                    label={node.label}
+                    description={node.description}
+                    shape={node.shape}
+                    icon={node.icon}
+                    pos={pos}
+                    fillColor={node.color ?? sc.fill}
+                    borderColor={sc.border}
+                    theme={theme}
+                    isSelected={selectedNodeId === node.id}
+                    onSelect={selectNode}
+                    onDragStart={handleDragStart}
+                    onDoubleClick={handleDoubleClick}
+                  />
+                </motion.g>
+              );
+            })}
+        </AnimatePresence>
       </svg>
 
       {/* Overlay input pour édition inline */}
