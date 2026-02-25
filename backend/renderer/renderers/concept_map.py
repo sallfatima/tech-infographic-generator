@@ -299,23 +299,25 @@ def _render_whiteboard(
         )
         content_y += lh + 2
 
-        # Description — dynamic max_lines
+        # Description — use smaller font to fit more text
         if node.description and h > 60:
-            desc_fs = min(10, max(8, h // 8))
-            desc_font = get_font(desc_fs, "regular")
-            from ..typography import draw_text_block
-            line_h = int(desc_fs * 1.4)
-            remaining_h = (y + h - 6) - content_y
-            available_lines = max(1, remaining_h // line_h)
-            draw_text_block(
-                draw, node.description,
-                (x + padding, content_y),
-                desc_font,
-                hex_to_rgb(theme["text_muted"]),
-                w - padding * 2,
-                max_lines=available_lines,
-                align="center",
-            )
+            remaining_h = (y + h - 8) - content_y
+            if remaining_h > 10:
+                # Use smaller font (9px) to show more description text
+                desc_fs = min(9, max(8, h // 12))
+                desc_font = get_font(desc_fs, "regular")
+                from ..typography import draw_text_block
+                line_h = int(desc_fs * 1.35)
+                available_lines = max(1, remaining_h // line_h)
+                draw_text_block(
+                    draw, node.description,
+                    (x + padding, content_y),
+                    desc_font,
+                    hex_to_rgb(theme["text_muted"]),
+                    w - padding * 2,
+                    max_lines=available_lines,
+                    align="center",
+                )
 
     # Draw center node last (on top) - bigger, prominent
     if center_pos:
@@ -351,10 +353,10 @@ def _render_whiteboard(
         )
 
         if center_node.description:
-            desc_font = get_font(10, "regular")
+            desc_font = get_font(9, "regular")
             desc_text = center_node.description
-            remaining_h = (y + h - 6) - (content_y + lh + 4)
-            line_h = int(10 * 1.4)
+            remaining_h = (y + h - 8) - (content_y + lh + 4)
+            line_h = int(9 * 1.35)
             max_desc_lines = max(1, remaining_h // line_h)
             from ..typography import draw_text_block
             draw_text_block(

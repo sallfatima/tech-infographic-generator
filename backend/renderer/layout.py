@@ -4,6 +4,8 @@ Content-aware: node dimensions adapt to their description length,
 so cards with more text are taller and cards with no text stay compact.
 """
 
+from __future__ import annotations
+
 import math
 from PIL import Image, ImageDraw
 
@@ -64,13 +66,19 @@ def measure_node_content_height(
     if not description:
         return max(min_h, base_h)
 
-    # Measure wrapped description — use same font size logic as draw_node()
+    # Measure wrapped description — use a conservative font size estimate.
+    # The actual draw_node() uses desc_fs = min(12, max(9, h // 8)),
+    # and draw_node_with_header() uses desc_fs = min(11, max(9, h // 10)).
+    # Since we don't know h yet, we estimate with a larger font to be safe
+    # (overestimate height → cards are slightly taller → no text overflow).
     text_w = card_w - 24  # inner padding (padding * 2 = 24)
-    # Match draw_node: desc_fs = min(12, max(9, h // 8))
-    # Since we don't know h yet, use card_w as proxy
-    desc_fs = min(11, max(9, card_w // 20))
+    if is_header_style:
+        desc_fs = 11  # match draw_node_with_header max
+        line_h = int(desc_fs * 1.35)  # match draw_node_with_header
+    else:
+        desc_fs = 12  # match draw_node max
+        line_h = int(desc_fs * 1.4)  # match draw_node
     desc_font = get_font(desc_fs, "regular")
-    line_h = int(desc_fs * 1.4)
 
     lines = wrap_text(draw, description, desc_font, text_w)
     desc_h = len(lines) * line_h + 6  # +6 margin
@@ -129,11 +137,10 @@ def layout_layered(
     n_layers = len(layers)
     available_h = canvas_h - header_h - margin
     layer_h = available_h // n_layers
-    layer_gap = 10
-    # Allow taller nodes to show full descriptions (up to 130px)
-    node_h = min(layer_h - layer_gap * 2 - 20, 130)
+    layer_gap = 8
+    # Allow taller nodes to show full descriptions — adaptive to space
+    node_h = min(layer_h - layer_gap * 2 - 10, 160)
     node_h = max(node_h, 70)  # minimum readable height
-    label_width = 100
 
     for li, layer in enumerate(layers):
         layer_y = header_h + li * layer_h
@@ -142,12 +149,22 @@ def layout_layered(
         if n_nodes == 0:
             continue
 
-        usable_w = canvas_w - margin * 2 - label_width
-        gap = 50  # enough space for arrows + labels between nodes
-        node_w = min((usable_w - (n_nodes - 1) * gap) // max(n_nodes, 1), 180)
+        # Adaptive gap and width based on number of nodes
+        usable_w = canvas_w - margin * 2
+        if n_nodes <= 3:
+            gap = 45
+            max_node_w = 220
+        elif n_nodes <= 5:
+            gap = 30  # smaller gap for more nodes
+            max_node_w = 200
+        else:
+            gap = 20
+            max_node_w = 180
+
+        node_w = min((usable_w - (n_nodes - 1) * gap) // max(n_nodes, 1), max_node_w)
         node_w = max(node_w, 100)  # minimum readable width
         total_nodes_w = n_nodes * node_w + (n_nodes - 1) * gap
-        start_x = margin + label_width + (usable_w - total_nodes_w) // 2
+        start_x = margin + (usable_w - total_nodes_w) // 2
 
         for ni, nid in enumerate(node_ids):
             x = start_x + ni * (node_w + gap)
@@ -282,17 +299,18 @@ def layout_grid(
             row_heights = [max(60, int(h * scale)) for h in row_heights]
             total_rows_h = sum(row_heights)
 
-        # Compute row gaps from leftover
+        # Compute row gaps from leftover — keep compact, avoid huge whitespace
         leftover_h = usable_h - total_rows_h
         if rows > 1:
-            actual_row_gap = max(row_gap, min(leftover_h // (rows), 80))
+            # Cap gaps at 40px (was 80) to avoid massive whitespace
+            actual_row_gap = max(row_gap, min(leftover_h // (rows + 1), 40))
         else:
             actual_row_gap = row_gap
 
-        # Push grid toward top
+        # Push grid toward top — minimal top margin
         total_grid_h = total_rows_h + (rows - 1) * actual_row_gap
         top_leftover = max(0, usable_h - total_grid_h)
-        start_y = header_h + min(top_leftover // 5, 30)
+        start_y = header_h + min(top_leftover // 8, 15)
 
         # Place nodes
         cum_y = start_y
@@ -317,14 +335,14 @@ def layout_grid(
     total_cards_h = rows * node_h
     leftover_h = usable_h - total_cards_h
     if rows > 1:
-        actual_row_gap = max(row_gap, leftover_h // rows)
-        actual_row_gap = min(actual_row_gap, 80)
+        actual_row_gap = max(row_gap, leftover_h // (rows + 1))
+        actual_row_gap = min(actual_row_gap, 40)
     else:
         actual_row_gap = row_gap
 
     total_grid_h = rows * node_h + (rows - 1) * actual_row_gap
     top_leftover = max(0, usable_h - total_grid_h)
-    start_y = header_h + min(top_leftover // 5, 30)
+    start_y = header_h + min(top_leftover // 8, 15)
 
     for i, nid in enumerate(node_ids):
         col = i % cols
@@ -387,16 +405,17 @@ def layout_radial(
         return positions
 
     # Adapt radius and node size to number of outer nodes
+    # Bigger nodes = more room for descriptions
     available = min(canvas_w, canvas_h - header_h)
     if n <= 4:
         radius = available // 3
-        node_w, node_h = 200, 110
+        node_w, node_h = 220, 130
     elif n <= 6:
         radius = int(available * 0.38)
-        node_w, node_h = 180, 100
+        node_w, node_h = 200, 120
     else:
-        radius = int(available * 0.40)
-        node_w, node_h = 170, 95
+        radius = int(available * 0.42)
+        node_w, node_h = 185, 110
 
     # Clamp so nodes don't go offscreen
     max_radius = min(

@@ -1,5 +1,7 @@
 """Shape rendering for infographic nodes."""
 
+from __future__ import annotations
+
 import math
 
 from PIL import Image, ImageDraw
@@ -355,20 +357,25 @@ def draw_node_with_header(
     # Description — dynamic max_lines based on remaining space
     if description and body_h > 20:
         remaining_h = (y1 - 6) - content_y
-        desc_fs = min(11, max(9, h // 10))
-        desc_font = get_font(desc_fs, "regular")
-        line_h = int(desc_fs * 1.35)
-        available_lines = max(1, remaining_h // line_h)
-        draw_text_block(
-            draw, description,
-            (x0 + 7, content_y),
-            desc_font,
-            hex_to_rgb(text_muted_color),
-            body_w,
-            line_height=line_h,
-            max_lines=available_lines,
-            align="center",
-        )
+        # Only draw if there's meaningful space left
+        if remaining_h > 12:
+            desc_fs = min(11, max(9, h // 10))
+            # If remaining space is very tight, use smaller font
+            if remaining_h < 25:
+                desc_fs = 9
+            desc_font = get_font(desc_fs, "regular")
+            line_h = int(desc_fs * 1.35)
+            available_lines = max(1, remaining_h // line_h)
+            draw_text_block(
+                draw, description,
+                (x0 + 7, content_y),
+                desc_font,
+                hex_to_rgb(text_muted_color),
+                body_w,
+                line_height=line_h,
+                max_lines=available_lines,
+                align="center",
+            )
 
 
 def draw_numbered_badge(
@@ -469,18 +476,64 @@ def draw_node(
     content_y = y0 + padding + 6
     content_w = w - padding * 2
 
-    # Icon
-    if icon_name:
-        icon_size = min(28, h // 4)
-        paste_icon(img, icon_name, (cx, content_y + icon_size // 2), icon_size, icon_color)
-        content_y += icon_size + 6
+    # Shape-specific adjustments: push content below shape geometry
+    # Also track bottom_margin for shapes that eat bottom space
+    bottom_margin = 6  # default
+    if shape == "cylinder":
+        # Cylinder has top+bottom ellipses, each (y1-y0)//5 high
+        ellipse_h = (y1 - y0) // 5
+        content_y = y0 + ellipse_h + 4  # start below top ellipse + small gap
+        content_w = w - padding * 2 - 8  # slightly narrower for cylinder body
+        bottom_margin = ellipse_h + 2  # fully exclude bottom ellipse zone
+    elif shape == "hexagon":
+        # Hexagon has angled edges — reduce usable width by ~35%
+        content_w = int(w * 0.60)
+        content_y = y0 + padding + 4
+    elif shape == "diamond":
+        # Diamond has angled edges — reduce usable width significantly
+        content_w = int(w * 0.55)
+        content_y = y0 + h // 4  # start at 25% down
+        bottom_margin = h // 4  # bottom 25% also unusable
+    elif shape == "circle":
+        # Circle has curved edges — reduce usable width
+        content_w = int(w * 0.60)
+        content_y = y0 + h // 5
+        bottom_margin = h // 5
 
-    # Label
-    label_font = get_font(min(16, max(11, h // 6)), "bold")
+    # Icon — smaller for special shapes that have limited content area
+    if icon_name:
+        if shape in ("cylinder", "hexagon", "diamond", "circle"):
+            icon_size = min(20, h // 6)  # smaller icon for constrained shapes
+        else:
+            icon_size = min(28, h // 4)
+        paste_icon(img, icon_name, (cx, content_y + icon_size // 2), icon_size, icon_color)
+        content_y += icon_size + 4
+
+    # Label — truncate if wider than content area; smaller for special shapes
+    if shape in ("cylinder", "hexagon", "diamond", "circle"):
+        max_label_fs = min(14, max(10, h // 7))
+    else:
+        max_label_fs = min(16, max(11, h // 6))
+    label_font = get_font(max_label_fs, "bold")
     lw, lh = text_size(draw, label, label_font)
+    display_label = label
+    if lw > content_w:
+        # Try smaller font first
+        for fs in range(max_label_fs - 1, 9, -1):
+            label_font = get_font(fs, "bold")
+            lw, lh = text_size(draw, display_label, label_font)
+            if lw <= content_w:
+                break
+        # If still too wide, truncate
+        if lw > content_w:
+            while lw > content_w and len(display_label) > 3:
+                display_label = display_label[:-1]
+                lw, lh = text_size(draw, display_label + "..", label_font)
+            display_label += ".."
+            lw, lh = text_size(draw, display_label, label_font)
     draw.text(
         (cx - lw // 2, content_y),
-        label,
+        display_label,
         fill=hex_to_rgb(text_color),
         font=label_font,
     )
@@ -488,21 +541,34 @@ def draw_node(
 
     # Description — dynamic max_lines based on remaining card space
     if description and h > 70:
-        remaining_h = (y1 - 6) - content_y
-        desc_fs = min(12, max(9, h // 8))
-        desc_font = get_font(desc_fs, "regular")
-        line_h = int(desc_fs * 1.4)
-        available_lines = max(1, remaining_h // line_h)
-        draw_text_block(
-            draw, description,
-            (x0 + padding, content_y),
-            desc_font,
-            hex_to_rgb(text_muted_color),
-            content_w,
-            line_height=line_h,
-            max_lines=available_lines,
-            align="center",
-        )
+        remaining_h = (y1 - bottom_margin) - content_y
+        # Only draw description if there's meaningful space left
+        if remaining_h > 12:
+            desc_fs = min(12, max(9, h // 8))
+            # If remaining space is very tight, use smaller font
+            if remaining_h < 30:
+                desc_fs = 9
+            desc_font = get_font(desc_fs, "regular")
+            line_h = int(desc_fs * 1.4)
+            available_lines = max(1, remaining_h // line_h)
+            # Use darker text color for shapes with light fills (cylinder, cloud)
+            # to ensure readability against the shape background
+            if shape in ("cylinder", "cloud"):
+                desc_color = hex_to_rgb(text_color)
+            else:
+                desc_color = hex_to_rgb(text_muted_color)
+            # Center text within content_w, accounting for shape offset
+            text_x = cx - content_w // 2
+            draw_text_block(
+                draw, description,
+                (text_x, content_y),
+                desc_font,
+                desc_color,
+                content_w,
+                line_height=line_h,
+                max_lines=available_lines,
+                align="center",
+            )
 
 
 # ---------------------------------------------------------------------------

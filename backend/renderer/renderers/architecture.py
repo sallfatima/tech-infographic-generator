@@ -242,9 +242,10 @@ def _render_guidebook(
             # Distance-based rendering — avoid overlap on short arrows
             arrow_dist = math.sqrt((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2)
             is_horiz = abs(end[0] - start[0]) > abs(end[1] - start[1])
+            is_same_layer = (from_layer == to_layer)
 
-            if arrow_dist > 150:
-                # Full numbered arrow with label
+            if arrow_dist > 280 and not is_same_layer:
+                # Long inter-layer arrow: full numbered arrow with label
                 draw_numbered_arrow(
                     draw, start, end,
                     number=ci + 1,
@@ -252,22 +253,23 @@ def _render_guidebook(
                     color=conn_color,
                     width=2,
                     dashed=True,
-                    badge_size=18,
+                    badge_size=16,
                 )
-            elif arrow_dist > 60:
-                # Short arrow: draw arrow + small step number, no label
+            elif arrow_dist > 200 and not is_same_layer:
+                # Medium inter-layer arrow: arrow + small step number, no label
                 draw_straight_arrow(draw, start, end, color=conn_color, width=2, dashed=True, head_size=8)
-                mid_x = (start[0] + end[0]) // 2
-                mid_y = (start[1] + end[1]) // 2
-                off_x = -22 if not is_horiz else 0
-                off_y = -22 if is_horiz else 0
+                t = 0.20
+                num_x = int(start[0] + t * (end[0] - start[0]))
+                num_y = int(start[1] + t * (end[1] - start[1]))
+                off_x = -25 if not is_horiz else 0
+                off_y = -25 if is_horiz else 0
                 draw_step_number(
-                    draw, (mid_x + off_x - 9, mid_y + off_y - 9),
+                    draw, (num_x + off_x - 8, num_y + off_y - 8),
                     ci + 1, bg_color="#FFFFFF", border_color=conn_color,
-                    text_color=conn_color, radius=9,
+                    text_color=conn_color, radius=8,
                 )
             else:
-                # Very short: just the arrow
+                # Same-layer or short arrow: just the dashed arrow, no step number
                 draw_straight_arrow(draw, start, end, color=conn_color, width=2, dashed=True, head_size=8)
 
     # Footer
@@ -478,66 +480,35 @@ def _render_whiteboard(
             # Calculate distance between start and end
             arrow_dist = math.sqrt((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2)
             is_horizontal = abs(end[0] - start[0]) > abs(end[1] - start[1])
+            is_same_layer = (from_layer == to_layer)
 
-            # Use bezier dashed arrows — label only if enough space (no step numbers)
-            has_space = arrow_dist > 150
+            # Use bezier dashed arrows — no labels on the arrow line itself
             draw_bezier_arrow(
                 draw, start, end,
                 color=conn_color, width=2, dashed=True,
                 curvature=0.15, label=None,
             )
 
-            if has_space:
-                # Step number at ~30% along the arrow
-                t = 0.30
+            # Step numbers only on long inter-layer arrows (avoid same-layer clutter)
+            if arrow_dist > 200 and not is_same_layer:
+                # Long arrow: step number at ~25% along the path, well clear of nodes
+                t = 0.25
                 num_x = int(start[0] + t * (end[0] - start[0]))
                 num_y = int(start[1] + t * (end[1] - start[1]))
-                # For vertical arrows, offset step number to avoid overlapping nodes
+                # Offset step number away from the arrow path to prevent overlap
                 if not is_horizontal:
-                    num_x -= 30  # shift left of the arrow path
-                draw_step_number(
-                    draw, (num_x - 13, num_y - 13),
-                    ci + 1,
-                    bg_color="#FFFFFF",
-                    border_color=conn_color,
-                    text_color=conn_color,
-                    radius=13,
-                )
-                if conn.label:
-                    label_font = get_font(10, "semibold")
-                    lw, lh = text_size(draw, conn.label, label_font)
-                    lpad = 4
-                    # Place label next to step number (right for horizontal, below for vertical)
-                    if is_horizontal:
-                        lx = num_x + 15
-                        ly = num_y - lh // 2 - 2
-                    else:
-                        lx = num_x - lw // 2 - 13
-                        ly = num_y + 15
-                    draw.rounded_rectangle(
-                        (lx - lpad, ly - lpad, lx + lw + lpad, ly + lh + lpad),
-                        radius=3, fill=(255, 255, 255), outline=hex_to_rgb(conn_color), width=1,
-                    )
-                    draw.text((lx, ly), conn.label, fill=hex_to_rgb(conn_color), font=label_font)
-            elif arrow_dist > 60:
-                # Medium arrow: small step number above (no label to avoid clutter)
-                mid_x = (start[0] + end[0]) // 2
-                mid_y = (start[1] + end[1]) // 2
-                if is_horizontal:
-                    ny_off = -28  # further above to avoid node labels
-                    nx_off = 0
+                    num_x -= 35  # shift further left of vertical arrows
                 else:
-                    ny_off = 0
-                    nx_off = -28  # further left
+                    num_y -= 25  # shift above horizontal arrows
                 draw_step_number(
-                    draw, (mid_x + nx_off - 10, mid_y + ny_off - 10),
+                    draw, (num_x - 11, num_y - 11),
                     ci + 1,
                     bg_color="#FFFFFF",
                     border_color=conn_color,
                     text_color=conn_color,
-                    radius=10,
+                    radius=11,
                 )
-            # Very short arrows (< 60px): no step number at all to avoid clutter
+            # Skip step numbers for same-layer and short arrows to avoid overlap
 
     # Footer
     if data.footer:
