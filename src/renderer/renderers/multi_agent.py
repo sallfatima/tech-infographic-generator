@@ -394,9 +394,10 @@ def _render_dark(
             accent_color=color, icon_color=color,
         )
 
-    # Draw center node
+    # Draw center node — use larger size and proper text wrapping
     if center_pos:
         x, y, w, h = center_pos
+        # Draw card background manually for bigger center node
         draw_node(
             img, draw, (x, y, x + w, y + h),
             label=center_node.label, description=center_node.description,
@@ -411,10 +412,10 @@ def _render_dark(
     for conn in data.connections:
         if conn.from_node != center_node.id and conn.to_node != center_node.id:
             if conn.from_node in positions and conn.to_node in positions:
-                from_center = get_node_center(positions[conn.from_node])
-                to_center = get_node_center(positions[conn.to_node])
-                start = get_node_edge(positions[conn.from_node], to_center)
-                end = get_node_edge(positions[conn.to_node], from_center)
+                from_center_pt = get_node_center(positions[conn.from_node])
+                to_center_pt = get_node_center(positions[conn.to_node])
+                start = get_node_edge(positions[conn.from_node], to_center_pt)
+                end = get_node_edge(positions[conn.to_node], from_center_pt)
                 draw_connection(
                     draw, start, end,
                     style=conn.style.value if conn.style else "dashed_arrow",

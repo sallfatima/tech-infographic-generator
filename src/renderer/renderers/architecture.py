@@ -239,16 +239,36 @@ def _render_guidebook(
                     start = get_node_left(from_pos)
                     end = get_node_right(to_pos)
 
-            # Use numbered dashed arrows (guidebook style)
-            draw_numbered_arrow(
-                draw, start, end,
-                number=ci + 1,
-                label=conn.label,
-                color=conn_color,
-                width=2,
-                dashed=True,
-                badge_size=18,
-            )
+            # Distance-based rendering — avoid overlap on short arrows
+            arrow_dist = math.sqrt((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2)
+            is_horiz = abs(end[0] - start[0]) > abs(end[1] - start[1])
+
+            if arrow_dist > 150:
+                # Full numbered arrow with label
+                draw_numbered_arrow(
+                    draw, start, end,
+                    number=ci + 1,
+                    label=conn.label,
+                    color=conn_color,
+                    width=2,
+                    dashed=True,
+                    badge_size=18,
+                )
+            elif arrow_dist > 60:
+                # Short arrow: draw arrow + small step number, no label
+                draw_straight_arrow(draw, start, end, color=conn_color, width=2, dashed=True, head_size=8)
+                mid_x = (start[0] + end[0]) // 2
+                mid_y = (start[1] + end[1]) // 2
+                off_x = -22 if not is_horiz else 0
+                off_y = -22 if is_horiz else 0
+                draw_step_number(
+                    draw, (mid_x + off_x - 9, mid_y + off_y - 9),
+                    ci + 1, bg_color="#FFFFFF", border_color=conn_color,
+                    text_color=conn_color, radius=9,
+                )
+            else:
+                # Very short: just the arrow
+                draw_straight_arrow(draw, start, end, color=conn_color, width=2, dashed=True, head_size=8)
 
     # Footer
     if data.footer:
@@ -555,18 +575,34 @@ def _render_dark(
     header_h = 100
     margin = 60
 
-    layers_data = [{"name": l.name, "nodes": l.nodes, "color": l.color} for l in data.layers]
+    # Build layers data — support both data.layers and data.zones
+    if data.layers:
+        layers_data = [{"name": l.name, "nodes": l.nodes, "color": l.color} for l in data.layers]
+    elif data.zones:
+        layers_data = [
+            {"name": z.get("name", f"Zone {i+1}"), "nodes": z.get("nodes", []), "color": z.get("color")}
+            for i, z in enumerate(data.zones)
+        ]
+    else:
+        layers_data = [{"name": data.title, "nodes": [n.id for n in data.nodes], "color": None}]
     nodes_dict = {n.id: n for n in data.nodes}
+
+    # Create synthetic Layer objects for rendering if we only have zones
+    effective_layers = data.layers if data.layers else [
+        type("Layer", (), {"name": ld["name"], "nodes": ld["nodes"], "color": ld.get("color")})()
+        for ld in layers_data
+    ]
+
     positions = layout_layered(layers_data, data.nodes, width, height, margin, header_h)
 
     # Draw layer backgrounds
-    n_layers = len(data.layers)
+    n_layers = len(effective_layers)
     if n_layers > 0:
         available_h = height - header_h - margin // 2
         layer_h = available_h // n_layers
         layer_colors = theme.get("layer_colors", ["#1E293B"] * 4)
 
-        for li, layer in enumerate(data.layers):
+        for li, layer in enumerate(effective_layers):
             ly = header_h + li * layer_h
             lcolor = layer.color or layer_colors[li % len(layer_colors)]
 
@@ -586,7 +622,7 @@ def _render_dark(
             )
 
     node_layer_map = {}
-    for li, layer in enumerate(data.layers):
+    for li, layer in enumerate(effective_layers):
         for nid in layer.nodes:
             node_layer_map[nid] = li
 
@@ -645,13 +681,35 @@ def _render_dark(
                     end = get_node_right(to_pos)
                 routing = "straight"
 
+            # Distance-based rendering — same logic as whiteboard
+            arrow_dist = math.sqrt((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2)
+            is_horizontal = abs(end[0] - start[0]) > abs(end[1] - start[1])
+
             draw_connection(
                 draw, start, end,
                 style=conn.style.value,
-                label=conn.label,
+                label=None,  # Draw label separately to avoid overlap
                 color=theme["text_muted"],
                 routing=routing,
             )
+
+            if conn.label and arrow_dist > 100:
+                label_font = get_font(10, "semibold")
+                lw_l, lh_l = text_size(draw, conn.label, label_font)
+                lpad = 3
+                mid_x = (start[0] + end[0]) // 2
+                mid_y = (start[1] + end[1]) // 2
+                if is_horizontal:
+                    lx = mid_x - lw_l // 2
+                    ly = mid_y - lh_l - 12
+                else:
+                    lx = mid_x + 12
+                    ly = mid_y - lh_l // 2
+                draw.rounded_rectangle(
+                    (lx - lpad, ly - lpad, lx + lw_l + lpad, ly + lh_l + lpad),
+                    radius=3, fill=hex_to_rgb(theme["card"]), outline=hex_to_rgb(theme["border"]), width=1,
+                )
+                draw.text((lx, ly), conn.label, fill=hex_to_rgb(theme["text_muted"]), font=label_font)
 
     # Draw nodes
     node_colors = theme.get("node_colors", [theme["accent"]])

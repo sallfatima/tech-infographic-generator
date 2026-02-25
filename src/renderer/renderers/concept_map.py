@@ -351,13 +351,16 @@ def _render_whiteboard(
         )
 
         if center_node.description:
-            desc_font = get_font(11, "regular")
-            dw, _ = text_size(draw, center_node.description[:30], desc_font)
-            draw.text(
-                (cx_center - dw // 2, content_y + lh + 4),
-                center_node.description[:30],
-                fill=hex_to_rgb("#E2E8F0"),
-                font=desc_font,
+            desc_font = get_font(10, "regular")
+            desc_text = center_node.description
+            remaining_h = (y + h - 6) - (content_y + lh + 4)
+            line_h = int(10 * 1.4)
+            max_desc_lines = max(1, remaining_h // line_h)
+            from ..typography import draw_text_block
+            draw_text_block(
+                draw, desc_text, (x + 10, content_y + lh + 4),
+                desc_font, hex_to_rgb("#E2E8F0"), w - 20,
+                line_height=line_h, max_lines=max_desc_lines, align="center",
             )
 
     return img

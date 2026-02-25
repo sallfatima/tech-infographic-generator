@@ -379,7 +379,7 @@ def layout_radial(
     positions = {}
     cx = canvas_w // 2
     cy = header_h + (canvas_h - header_h) // 2
-    center_w, center_h = 160, 80
+    center_w, center_h = 180, 100
     positions[center_id] = (cx - center_w // 2, cy - center_h // 2, center_w, center_h)
 
     n = len(outer_ids)
@@ -387,7 +387,7 @@ def layout_radial(
         return positions
 
     radius = min(canvas_w, canvas_h - header_h) // 3
-    node_w, node_h = 140, 70
+    node_w, node_h = 170, 90
 
     for i, nid in enumerate(outer_ids):
         angle = (2 * math.pi * i) / n - math.pi / 2
