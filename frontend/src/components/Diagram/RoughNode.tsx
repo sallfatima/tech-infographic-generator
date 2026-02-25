@@ -1,7 +1,7 @@
 /**
  * RoughNode — Node rendu avec Rough.js (style hand-drawn Excalidraw).
  *
- * Remplace les <rect> basiques de Phase 1 par des shapes Rough.js.
+ * Phase 3 : ajout sélection, drag-drop et double-clic inline edit.
  * Chaque node.shape détermine la forme : rounded_rect, circle, cylinder, etc.
  */
 
@@ -30,10 +30,16 @@ interface RoughNodeProps {
   fillColor: string;
   borderColor: string;
   theme: DiagramTheme;
+  /** Phase 3 : sélection */
+  isSelected?: boolean;
+  onSelect?: (nodeId: string) => void;
+  onDragStart?: (nodeId: string, e: React.MouseEvent) => void;
+  onDoubleClick?: (nodeId: string) => void;
 }
 
 export default function RoughNode({
   rc,
+  nodeId,
   label,
   description,
   shape = "rounded_rect",
@@ -42,6 +48,10 @@ export default function RoughNode({
   fillColor,
   borderColor,
   theme,
+  isSelected = false,
+  onSelect,
+  onDragStart,
+  onDoubleClick,
 }: RoughNodeProps) {
   const gRef = useRef<SVGGElement>(null);
 
@@ -104,8 +114,36 @@ export default function RoughNode({
   const textStartY = pos.y + (pos.h - totalTextH) / 2 + iconOffset / 2;
 
   return (
-    <g ref={gRef} className="cursor-pointer">
+    <g
+      ref={gRef}
+      className="cursor-pointer"
+      onMouseDown={(e) => {
+        e.stopPropagation();
+        onSelect?.(nodeId);
+        onDragStart?.(nodeId, e);
+      }}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        onDoubleClick?.(nodeId);
+      }}
+    >
       {/* Le shape Rough.js est injecté via useEffect (data-rough) */}
+
+      {/* Halo de sélection */}
+      {isSelected && (
+        <rect
+          x={pos.x - 4}
+          y={pos.y - 4}
+          width={pos.w + 8}
+          height={pos.h + 8}
+          rx={8}
+          fill="none"
+          stroke="#3b82f6"
+          strokeWidth={2}
+          strokeDasharray="6 3"
+          opacity={0.7}
+        />
+      )}
 
       {/* Icône badge si présente */}
       {icon && (
@@ -128,6 +166,7 @@ export default function RoughNode({
           fill={theme.text}
           fontSize={13}
           fontWeight={600}
+          style={{ pointerEvents: "none" }}
         >
           {line}
         </text>
@@ -142,6 +181,7 @@ export default function RoughNode({
           textAnchor="middle"
           fill={theme.textMuted}
           fontSize={10}
+          style={{ pointerEvents: "none" }}
         >
           {line}
         </text>
