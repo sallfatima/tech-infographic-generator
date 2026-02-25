@@ -6,7 +6,7 @@ This package contains 3 specialized agents that collaborate sequentially:
 3. Render Agent - renders the final image with optimal theme selection
 
 Usage:
-    from src.agents import InfographicPipeline, PipelineContext
+    from backend.agents import InfographicPipeline, PipelineContext
 
     ctx = PipelineContext(user_text="How RAG works...", theme="guidebook")
     pipeline = InfographicPipeline()

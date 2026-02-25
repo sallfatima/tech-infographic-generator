@@ -3,12 +3,12 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.models.infographic import (
+from backend.models.infographic import (
     InfographicData, InfographicType, Node, Connection,
     ConnectionStyle, Layer, NodeShape, IconName,
 )
-from src.renderer.engine import ProRenderer
-from src.renderer.themes import get_theme
+from backend.renderer.engine import ProRenderer
+from backend.renderer.themes import get_theme
 
 W, H = 1400, 900
 

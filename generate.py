@@ -24,17 +24,17 @@ console = Console()
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.generators.local_generator import LocalInfographicGenerator
-from src.styles.presets import get_preset, list_presets, STYLE_PRESETS
+from backend.generators.local_generator import LocalInfographicGenerator
+from backend.styles.presets import get_preset, list_presets, STYLE_PRESETS
 
 
 def get_generator(backend: str, palette: str = "tech_blue"):
     """Instantiate the right generator based on backend choice."""
     if backend == "dalle":
-        from src.generators.dalle_generator import DalleGenerator
+        from backend.generators.dalle_generator import DalleGenerator
         return DalleGenerator()
     elif backend == "stable-diffusion":
-        from src.generators.sd_generator import StableDiffusionGenerator
+        from backend.generators.sd_generator import StableDiffusionGenerator
         return StableDiffusionGenerator()
     else:
         return LocalInfographicGenerator(palette=palette)
@@ -178,9 +178,9 @@ def pro(description, theme, infographic_type, width, height, fmt, output):
     DESCRIPTION: Text or LinkedIn post to convert into an infographic.
     """
     import asyncio
-    from src.analyzer.llm_analyzer import LLMAnalyzer
-    from src.renderer.engine import ProRenderer
-    from src.renderer.animator import InfographicAnimator
+    from backend.analyzer.llm_analyzer import LLMAnalyzer
+    from backend.renderer.engine import ProRenderer
+    from backend.renderer.animator import InfographicAnimator
 
     description = description.replace("\\n", "\n")
 
