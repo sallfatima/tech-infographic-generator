@@ -45,21 +45,30 @@ def measure_node_content_height(
         icon_h = 50 if has_icon else 15
         label_h = 24
         padding = 24
-    else:
-        # Grid/card layout
-        header_h = 32 if is_header_style else 10
+    elif is_header_style:
+        # Guidebook style with header band
+        header_h = 34
         icon_h = 28 if has_icon else 0
         label_h = 22
         padding = 16
+    else:
+        # Whiteboard/dark draw_node style — match actual rendering:
+        # accent bar (9px) + top padding (18px) + icon (28+6) + label (lh+4) + bottom (6)
+        header_h = 18  # accent bar + top padding
+        icon_h = 34 if has_icon else 0  # icon_size(28) + gap(6)
+        label_h = 26  # label text + gap(4)
+        padding = 12  # bottom margin
 
     base_h = header_h + icon_h + label_h + padding
 
     if not description:
         return max(min_h, base_h)
 
-    # Measure wrapped description
-    text_w = card_w - 28  # inner padding
-    desc_fs = min(11, max(9, card_w // 30))
+    # Measure wrapped description — use same font size logic as draw_node()
+    text_w = card_w - 24  # inner padding (padding * 2 = 24)
+    # Match draw_node: desc_fs = min(12, max(9, h // 8))
+    # Since we don't know h yet, use card_w as proxy
+    desc_fs = min(11, max(9, card_w // 20))
     desc_font = get_font(desc_fs, "regular")
     line_h = int(desc_fs * 1.4)
 
@@ -121,7 +130,9 @@ def layout_layered(
     available_h = canvas_h - header_h - margin
     layer_h = available_h // n_layers
     layer_gap = 10
-    node_h = min(layer_h - layer_gap * 2 - 20, 80)
+    # Allow taller nodes to show full descriptions (up to 130px)
+    node_h = min(layer_h - layer_gap * 2 - 20, 130)
+    node_h = max(node_h, 70)  # minimum readable height
     label_width = 100
 
     for li, layer in enumerate(layers):
@@ -132,12 +143,14 @@ def layout_layered(
             continue
 
         usable_w = canvas_w - margin * 2 - label_width
-        node_w = min(usable_w // n_nodes - 20, 160)
-        total_nodes_w = n_nodes * node_w + (n_nodes - 1) * 20
+        gap = 50  # enough space for arrows + labels between nodes
+        node_w = min((usable_w - (n_nodes - 1) * gap) // max(n_nodes, 1), 180)
+        node_w = max(node_w, 100)  # minimum readable width
+        total_nodes_w = n_nodes * node_w + (n_nodes - 1) * gap
         start_x = margin + label_width + (usable_w - total_nodes_w) // 2
 
         for ni, nid in enumerate(node_ids):
-            x = start_x + ni * (node_w + 20)
+            x = start_x + ni * (node_w + gap)
             y = layer_y + (layer_h - node_h) // 2
             positions[nid] = (x, y, node_w, node_h)
 
@@ -168,12 +181,12 @@ def layout_flow_horizontal(
     # Content-aware height
     if nodes:
         content_heights = measure_content_heights(
-            nodes, node_w, is_header_style=False, min_h=70, max_h=250,
+            nodes, node_w, is_header_style=False, min_h=90, max_h=280,
         )
         # Use the tallest needed height (all stages same height for alignment)
         node_h = max(content_heights.values())
     else:
-        node_h = min(100, (canvas_h - header_h - margin * 2))
+        node_h = min(120, (canvas_h - header_h - margin * 2))
 
     # Clamp to available space
     max_available = canvas_h - header_h - margin * 2

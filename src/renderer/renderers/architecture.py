@@ -5,6 +5,7 @@ Supports two rendering modes:
 - Dark themes: Dark background with layer bands and accent bars
 """
 
+import math
 from collections import defaultdict
 
 from PIL import Image, ImageDraw
@@ -454,25 +455,69 @@ def _render_whiteboard(
                     end = get_node_right(to_pos)
                 routing = "straight"
 
-            # Use bezier dashed arrows for whiteboard style (SwirlAI)
+            # Calculate distance between start and end
+            arrow_dist = math.sqrt((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2)
+            is_horizontal = abs(end[0] - start[0]) > abs(end[1] - start[1])
+
+            # Use bezier dashed arrows — label only if enough space (no step numbers)
+            has_space = arrow_dist > 150
             draw_bezier_arrow(
                 draw, start, end,
                 color=conn_color, width=2, dashed=True,
-                curvature=0.15, label=conn.label,
+                curvature=0.15, label=None,
             )
 
-            # Draw step number near the start of the connection (not mid to avoid label overlap)
-            t = 0.25  # 25% along the path
-            num_x = int(start[0] + t * (end[0] - start[0]))
-            num_y = int(start[1] + t * (end[1] - start[1]))
-            draw_step_number(
-                draw, (num_x - 13, num_y - 13),
-                ci + 1,
-                bg_color="#FFFFFF",
-                border_color=conn_color,
-                text_color=conn_color,
-                radius=13,
-            )
+            if has_space:
+                # Step number at ~30% along the arrow
+                t = 0.30
+                num_x = int(start[0] + t * (end[0] - start[0]))
+                num_y = int(start[1] + t * (end[1] - start[1]))
+                # For vertical arrows, offset step number to avoid overlapping nodes
+                if not is_horizontal:
+                    num_x -= 30  # shift left of the arrow path
+                draw_step_number(
+                    draw, (num_x - 13, num_y - 13),
+                    ci + 1,
+                    bg_color="#FFFFFF",
+                    border_color=conn_color,
+                    text_color=conn_color,
+                    radius=13,
+                )
+                if conn.label:
+                    label_font = get_font(10, "semibold")
+                    lw, lh = text_size(draw, conn.label, label_font)
+                    lpad = 4
+                    # Place label next to step number (right for horizontal, below for vertical)
+                    if is_horizontal:
+                        lx = num_x + 15
+                        ly = num_y - lh // 2 - 2
+                    else:
+                        lx = num_x - lw // 2 - 13
+                        ly = num_y + 15
+                    draw.rounded_rectangle(
+                        (lx - lpad, ly - lpad, lx + lw + lpad, ly + lh + lpad),
+                        radius=3, fill=(255, 255, 255), outline=hex_to_rgb(conn_color), width=1,
+                    )
+                    draw.text((lx, ly), conn.label, fill=hex_to_rgb(conn_color), font=label_font)
+            elif arrow_dist > 60:
+                # Medium arrow: small step number above (no label to avoid clutter)
+                mid_x = (start[0] + end[0]) // 2
+                mid_y = (start[1] + end[1]) // 2
+                if is_horizontal:
+                    ny_off = -28  # further above to avoid node labels
+                    nx_off = 0
+                else:
+                    ny_off = 0
+                    nx_off = -28  # further left
+                draw_step_number(
+                    draw, (mid_x + nx_off - 10, mid_y + ny_off - 10),
+                    ci + 1,
+                    bg_color="#FFFFFF",
+                    border_color=conn_color,
+                    text_color=conn_color,
+                    radius=10,
+                )
+            # Very short arrows (< 60px): no step number at all to avoid clutter
 
     # Footer
     if data.footer:

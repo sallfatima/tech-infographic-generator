@@ -303,11 +303,32 @@ def _render_whiteboard(
                 color=sc["border"], width=2, dashed=True,
                 curvature=0.15, label=None,
             )
+            # Step number above the arrow, not on top of it
+            ax_mid = (ax_start + ax_end) // 2
             draw_step_number(
-                draw, ((ax_start + ax_end) // 2, ay - 18),
+                draw, (ax_mid - 12, cy - stage_h // 2 - 28),
                 i + 1, bg_color="#FFFFFF", border_color=sc["border"],
                 text_color=sc["border"], radius=12,
             )
+            # Connection label below step number if exists
+            if data.connections:
+                conn_label = None
+                next_node = data.nodes[i + 1]
+                for conn in data.connections:
+                    if conn.from_node == node.id and conn.to_node == next_node.id:
+                        conn_label = conn.label
+                        break
+                if conn_label:
+                    lbl_font = get_font(9, "semibold")
+                    lw, lh = text_size(draw, conn_label, lbl_font)
+                    lpad = 3
+                    lx = ax_mid - lw // 2
+                    ly = cy - stage_h // 2 - 28 + 26
+                    draw.rounded_rectangle(
+                        (lx - lpad, ly - lpad, lx + lw + lpad, ly + lh + lpad),
+                        radius=3, fill=(255, 255, 255), outline=hex_to_rgb(sc["border"]), width=1,
+                    )
+                    draw.text((lx, ly), conn_label, fill=hex_to_rgb(sc["border"]), font=lbl_font)
 
     return img
 

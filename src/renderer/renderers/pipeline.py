@@ -350,21 +350,31 @@ def _render_whiteboard(
                 (prev_x + prev_w, sy + stage_h // 2),
                 (curr_x, curr_y + stage_h // 2),
                 color=sc["border"], width=2, dashed=True,
-                curvature=0.15, label=conn_label,
+                curvature=0.15, label=None,
             )
 
-            # Step number on arrow (retained for visual continuity)
-            ax_start = sx + stage_w + 5
-            ax_end = ax_start + arrow_gap - 10
+            # Step number above arrow + label below
+            ax_mid = sx + stage_w + arrow_gap // 2
             draw_step_number(
                 draw,
-                ((ax_start + ax_end) // 2, cy - 18),
+                (ax_mid - 12, cy - stage_h // 2 - 30),
                 i + 1,
                 bg_color="#FFFFFF",
                 border_color=sc["border"],
                 text_color=sc["border"],
                 radius=12,
             )
+            if conn_label:
+                lbl_font = get_font(9, "semibold")
+                lw, lh = text_size(draw, conn_label, lbl_font)
+                lpad = 3
+                lx = ax_mid - lw // 2
+                ly = cy - stage_h // 2 - 30 + 26
+                draw.rounded_rectangle(
+                    (lx - lpad, ly - lpad, lx + lw + lpad, ly + lh + lpad),
+                    radius=3, fill=(255, 255, 255), outline=hex_to_rgb(sc["border"]), width=1,
+                )
+                draw.text((lx, ly), conn_label, fill=hex_to_rgb(sc["border"]), font=lbl_font)
 
     # Footer
     if data.footer:

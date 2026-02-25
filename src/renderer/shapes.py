@@ -234,7 +234,7 @@ def draw_step_number(
     )
     # Number text
     num_font = get_font(14, "bold")
-    num_text = f"{number}."
+    num_text = str(number)
     nw, nh = text_size(draw, num_text, num_font)
     draw.text(
         (cx - nw // 2, cy - nh // 2),

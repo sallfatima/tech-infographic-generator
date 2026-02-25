@@ -201,7 +201,7 @@ def _render_whiteboard(
 
     positions = layout_force_directed(
         data.nodes, data.connections, width, height,
-        margin=70, header_h=header_h, node_w=150, node_h=85,
+        margin=70, header_h=header_h, node_w=170, node_h=100,
     )
     section_colors = theme.get("section_colors", [
         {"fill": "#E3F2FD", "border": "#2B7DE9", "text": "#1565C0"},
@@ -304,9 +304,16 @@ def _render_whiteboard(
         draw.text((cx_center - lw // 2, content_y), center_node.label, fill=hex_to_rgb("#FFFFFF"), font=label_font)
 
         if center_node.description:
-            desc_font = get_font(11, "regular")
-            dw, _ = text_size(draw, center_node.description[:30], desc_font)
-            draw.text((cx_center - dw // 2, content_y + lh + 4), center_node.description[:30], fill=hex_to_rgb("#E2E8F0"), font=desc_font)
+            desc_font = get_font(10, "regular")
+            desc_text = center_node.description
+            remaining_h = (y + h - 6) - (content_y + lh + 4)
+            line_h = int(10 * 1.4)
+            max_desc_lines = max(1, remaining_h // line_h)
+            draw_text_block(
+                draw, desc_text, (x + 10, content_y + lh + 4),
+                desc_font, hex_to_rgb("#E2E8F0"), w - 20,
+                line_height=line_h, max_lines=max_desc_lines, align="center",
+            )
 
     return img
 
