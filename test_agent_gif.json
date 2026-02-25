@@ -1,0 +1,9 @@
+{
+  "text": "En 1 image, je t'explique comment un agent IA prend des decisions tout seul (et pourquoi c'est dangereux).\n\nUn agent IA suit un cycle de decision autonome en 5 etapes :\n\n1. PERCEPTION - L'agent recoit une requete utilisateur ou un evenement externe. Il capture le contexte via ses capteurs (API, texte, donnees).\n\n2. RAISONNEMENT (LLM Brain) - Le coeur du systeme. Le LLM analyse la situation, decompose le probleme en sous-taches (Chain-of-Thought), et decide quelle action prendre. C'est ici que l'agent reflechit seul.\n\n3. SELECTION D'OUTILS - L'agent choisit parmi ses outils disponibles : recherche web, execution de code, appels API, lecture de fichiers, envoi d'emails. Il decide SEUL quel outil utiliser.\n\n4. EXECUTION - L'agent execute l'action dans le monde reel : appelle une API, modifie une base de donnees, envoie un message. Aucune validation humaine.\n\n5. MEMOIRE ET BOUCLE - Le resultat est stocke en memoire (court terme et long terme). L'agent evalue si l'objectif est atteint. Si non, il REBOUCLE automatiquement a l'etape 2.\n\nPOURQUOI C'EST DANGEREUX :\n- Hallucinations : le LLM peut raisonner sur des faits inventes et agir dessus\n- Boucles infinies : l'agent peut reboucler indefiniment sans atteindre son objectif\n- Actions irreversibles : suppression de donnees, envoi d'emails, transactions financieres sans supervision\n- Escalade de privileges : l'agent peut decouvrir et exploiter des acces non prevus\n- Pas de supervision humaine : tout le cycle se fait sans Human-in-the-Loop\n\nL'architecture complete forme un cycle : Perception > Raisonnement > Outils > Execution > Memoire > (reboucle). Les guardrails et la supervision humaine sont les seuls filets de securite.",
+  "infographic_type": "architecture",
+  "theme": "guidebook",
+  "width": 1400,
+  "height": 900,
+  "format": "gif",
+  "frame_duration": 600
+}

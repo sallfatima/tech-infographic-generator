@@ -1,6 +1,6 @@
 # Image Generator - Tech Infographics from Text
 
-Generate professional tech infographic images (similar to ByteByteAI/ByteByteGo style) from text descriptions.
+Generate professional tech infographic images from text descriptions.
 
 ## Features
 
@@ -13,7 +13,7 @@ Generate professional tech infographic images (similar to ByteByteAI/ByteByteGo 
 
 - **3 color palettes**: tech_blue (dark), clean_white (light), dark_modern (orange/pink)
 
-- **Predefined presets**: bytebyteai, system_design, process_flow, comparison, course_card, social_media
+- **Predefined presets**: tech_infographic, system_design, process_flow, comparison, course_card, social_media
 
 ## Quick Start
 
@@ -31,7 +31,7 @@ python generate.py create "How DNS Works\nStep 1: Browser sends request\nStep 2:
 python generate.py create "User Authentication Flow\nLogin Page\nValidate Credentials\nCheck 2FA\nGenerate JWT\nReturn Token" --style flowchart
 
 # Generate with a preset
-python generate.py create "Machine Learning Pipeline" --preset bytebyteai
+python generate.py create "Machine Learning Pipeline" --preset tech_infographic
 
 # Generate with DALL-E (requires OPENAI_API_KEY)
 python generate.py create "Kubernetes Pod Lifecycle" --backend dalle --style diagram

@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from .base import ImageGenerator, GenerationResult
 
-# Color palettes inspired by ByteByteAI / tech infographic style
+# Color palettes for tech infographic style
 PALETTES = {
     "tech_blue": {
         "bg": "#0F172A",

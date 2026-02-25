@@ -1,7 +1,7 @@
 """Predefined style presets for different image types."""
 
 STYLE_PRESETS = {
-    "bytebyteai": {
+    "tech_infographic": {
         "description": "Clean tech infographic, dark background, blue/purple accents",
         "palette": "tech_blue",
         "layout": "infographic",
@@ -74,7 +74,7 @@ STYLE_PRESETS = {
 
 
 def get_preset(name: str) -> dict:
-    return STYLE_PRESETS.get(name, STYLE_PRESETS["bytebyteai"])
+    return STYLE_PRESETS.get(name, STYLE_PRESETS["tech_infographic"])
 
 
 def list_presets() -> list[str]:

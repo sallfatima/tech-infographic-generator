@@ -1,0 +1,8 @@
+{
+  "text": "Comment un agent IA prend des decisions tout seul - Le cycle ReAct (Reason-Act-Observe)\n\nL'agent IA fonctionne en boucle autonome selon le pattern ReAct :\n\n1. L'utilisateur envoie une requete a l'agent\n2. L'agent passe par le module de Raisonnement (LLM + Chain-of-Thought) qui decompose le probleme\n3. Le LLM decide quelle action prendre et selectionne un outil parmi : Recherche Web, Execution Code, Appels API, Lecture Fichiers\n4. L'outil execute l'action dans le monde reel (SANS validation humaine)\n5. Le resultat est observe et stocke en Memoire (court terme + long terme)\n6. L'agent evalue : objectif atteint ? Si OUI -> retourne le resultat a l'utilisateur. Si NON -> reboucle automatiquement au Raisonnement\n\nLes dangers de ce cycle autonome :\n- Le Raisonnement peut halluciner (faits inventes)\n- La Boucle peut etre infinie (pas de condition d'arret)\n- L'Execution est irreversible (suppression donnees, envoi emails)\n- Zero Human-in-the-Loop\n\nSolution : Guardrails entre chaque etape + supervision humaine obligatoire pour les actions critiques",
+  "infographic_type": "flowchart",
+  "theme": "guidebook",
+  "width": 1400,
+  "height": 900,
+  "format": "png"
+}

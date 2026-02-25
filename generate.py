@@ -4,7 +4,7 @@
 Usage:
     python generate.py "How DNS works" --style infographic
     python generate.py "Step 1: Request\nStep 2: Resolve\nStep 3: Response" --style flowchart
-    python generate.py --preset bytebyteai "Machine Learning Pipeline"
+    python generate.py --preset tech_infographic "Machine Learning Pipeline"
     python generate.py --backend dalle "API Gateway Architecture"
 """
 
@@ -160,6 +160,79 @@ def batch(description, count, style, palette):
         console.print(f"  [{pal}] {result.image_path}")
 
     console.print(f"\n[green bold]Done! Generated {count} images in ./output/[/green bold]")
+
+
+@cli.command()
+@click.argument("description")
+@click.option("--theme", "-t", default="tech_blue", help="Color theme.")
+@click.option("--type", "infographic_type", default=None, help="Infographic type hint.")
+@click.option("--width", "-w", type=int, default=1400)
+@click.option("--height", "-h", type=int, default=900)
+@click.option("--format", "fmt", type=click.Choice(["png", "gif"]), default="png")
+@click.option("--output", "-o", type=str, default=None)
+def pro(description, theme, infographic_type, width, height, fmt, output):
+    """Generate a professional infographic using LLM + Pro Renderer.
+
+    Requires ANTHROPIC_API_KEY or OPENAI_API_KEY in .env.
+
+    DESCRIPTION: Text or LinkedIn post to convert into an infographic.
+    """
+    import asyncio
+    from src.analyzer.llm_analyzer import LLMAnalyzer
+    from src.renderer.engine import ProRenderer
+    from src.renderer.animator import InfographicAnimator
+
+    description = description.replace("\\n", "\n")
+
+    console.print(Panel(
+        f"[bold]Text:[/bold] {description[:120]}...\n"
+        f"[bold]Theme:[/bold] {theme}  |  [bold]Format:[/bold] {fmt}\n"
+        f"[bold]Size:[/bold] {width}x{height}",
+        title="Pro Infographic Generator",
+        border_style="magenta",
+    ))
+
+    # Step 1: Analyze with LLM
+    with console.status("[bold blue]Analyzing text with AI..."):
+        analyzer = LLMAnalyzer()
+        data = asyncio.run(analyzer.analyze(description, infographic_type))
+
+    console.print(f"[cyan]Detected type:[/cyan] {data.type.value}")
+    console.print(f"[cyan]Nodes:[/cyan] {len(data.nodes)} | [cyan]Connections:[/cyan] {len(data.connections)}")
+
+    # Step 2: Render
+    with console.status("[bold blue]Rendering infographic..."):
+        if fmt == "gif":
+            animator = InfographicAnimator(theme)
+            path = animator.generate_gif(data, width, height, output_path=output)
+        else:
+            renderer = ProRenderer(theme)
+            path = renderer.render(data, width, height, output_path=output)
+
+    console.print(f"\n[green bold]Saved:[/green bold] {path}")
+
+
+@cli.command()
+@click.option("--host", default="0.0.0.0", help="Host to bind to.")
+@click.option("--port", "-p", type=int, default=8000, help="Port number.")
+@click.option("--reload", is_flag=True, default=True, help="Auto-reload on changes.")
+def serve(host, port, reload):
+    """Start the web application server."""
+    import uvicorn
+
+    console.print(Panel(
+        f"[bold]Server:[/bold] http://{host}:{port}\n"
+        f"[bold]Reload:[/bold] {reload}",
+        title="Starting Web Server",
+        border_style="green",
+    ))
+
+    uvicorn.run(
+        "src.api.app:app",
+        host=host,
+        port=port,
+        reload=reload,
+    )
 
 
 if __name__ == "__main__":

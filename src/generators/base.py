@@ -47,7 +47,7 @@ class ImageGenerator(ABC):
                 "Clean, modern infographic style with flat design icons, "
                 "structured layout, soft gradients, professional color palette, "
                 "clear typography hierarchy, tech-inspired aesthetic similar to "
-                "ByteByteGo/ByteByteAI visual style. "
+                "modern tech visual style. "
             ),
             "diagram": (
                 "Technical system architecture diagram, clean boxes and arrows, "

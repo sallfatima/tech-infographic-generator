@@ -1,0 +1,8 @@
+{
+  "text": "Comment un agent IA prend des decisions tout seul en 6 etapes (et pourquoi c'est dangereux)\n\nEtape 1 - PERCEPTION : L'agent recoit une requete utilisateur. Il capture le contexte via ses capteurs (API, texte, donnees en temps reel). C'est le point d'entree du cycle autonome.\n\nEtape 2 - RAISONNEMENT : Le LLM (cerveau de l'agent) analyse la situation avec du Chain-of-Thought. Il decompose le probleme en sous-taches et planifie la strategie. C'est ici que l'agent reflechit SEUL.\n\nEtape 3 - SELECTION D'OUTILS : L'agent parcourt ses outils disponibles (recherche web, execution de code, appels API, base de donnees) et choisit celui qui convient le mieux. Decision 100% autonome.\n\nEtape 4 - EXECUTION : L'agent execute l'action dans le monde reel. Il appelle une API, modifie une BDD, envoie un email. AUCUNE validation humaine a cette etape.\n\nEtape 5 - MEMOIRE : Le resultat est stocke en memoire court terme (contexte) et long terme (vectorDB). L'agent evalue si l'objectif est atteint.\n\nEtape 6 - REBOUCLAGE : Si objectif non atteint, l'agent retourne automatiquement a l'etape 2 et recommence. C'est la boucle autonome. Les dangers : hallucinations (raisonnement sur des faits inventes), boucles infinies, actions irreversibles, et zero supervision humaine.",
+  "infographic_type": "process",
+  "theme": "guidebook",
+  "width": 1400,
+  "height": 900,
+  "format": "png"
+}

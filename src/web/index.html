@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tech Infographic Generator</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app">
+        <header>
+            <h1>Tech Infographic Generator</h1>
+            <p class="subtitle">Paste a LinkedIn post or describe a tech concept to generate a professional infographic</p>
+        </header>
+
+        <main>
+            <div class="controls">
+                <textarea id="input-text" placeholder="Paste a LinkedIn post about tech, or describe a concept like:&#10;&#10;'How Kubernetes orchestrates containers: pods, services, deployments, ingress controller, etcd for state, kubelet on each node'&#10;&#10;'Compare REST vs GraphQL vs gRPC for API design'&#10;&#10;'ML Pipeline: Data Collection → Preprocessing → Feature Engineering → Model Training → Evaluation → Deployment'"></textarea>
+
+                <div class="options">
+                    <div class="option-group">
+                        <label for="type-select">Type</label>
+                        <select id="type-select">
+                            <option value="">Auto-detect</option>
+                            <option value="architecture">Architecture</option>
+                            <option value="flowchart">Flowchart</option>
+                            <option value="comparison">Comparison</option>
+                            <option value="process">Process / Steps</option>
+                            <option value="pipeline">Pipeline</option>
+                            <option value="concept_map">Concept Map</option>
+                            <option value="infographic">Infographic</option>
+                        </select>
+                    </div>
+
+                    <div class="option-group">
+                        <label for="theme-select">Theme</label>
+                        <select id="theme-select">
+                            <option value="whiteboard">Whiteboard (SwirlAI)</option>
+                            <option value="guidebook">Guidebook (DailyDoseofDS)</option>
+                            <option value="tech_blue">Tech Blue (Dark)</option>
+                            <option value="clean_white">Clean White</option>
+                            <option value="dark_modern">Dark Modern</option>
+                            <option value="ocean">Ocean</option>
+                            <option value="emerald">Emerald</option>
+                        </select>
+                    </div>
+
+                    <div class="option-group">
+                        <label for="format-select">Format</label>
+                        <select id="format-select">
+                            <option value="png">PNG (Static)</option>
+                            <option value="gif">GIF (Animated)</option>
+                        </select>
+                    </div>
+
+                    <div class="option-group">
+                        <label for="size-select">Size</label>
+                        <select id="size-select">
+                            <option value="1400x900">1400 x 900 (Landscape)</option>
+                            <option value="1200x800">1200 x 800</option>
+                            <option value="1080x1080">1080 x 1080 (Square)</option>
+                            <option value="1080x1920">1080 x 1920 (Story)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mode-toggle">
+                    <label class="mode-label">Mode</label>
+                    <div class="mode-buttons">
+                        <button class="mode-btn active" data-mode="standard" onclick="setMode('standard')">Standard</button>
+                        <button class="mode-btn" data-mode="pro" onclick="setMode('pro')">Pro (Multi-Agent)</button>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button id="generate-btn" class="btn-primary" onclick="generate()">Generate Infographic</button>
+                    <button id="analyze-btn" class="btn-secondary" onclick="analyzeOnly()">Analyze Only</button>
+                </div>
+            </div>
+
+            <div class="output">
+                <!-- Pipeline progress bar (Pro mode only) -->
+                <div id="pipeline-progress" class="pipeline-progress hidden">
+                    <div class="pipeline-steps">
+                        <div class="pipeline-step" data-step="research">
+                            <div class="step-icon">1</div>
+                            <div class="step-info">
+                                <span class="step-name">Research</span>
+                                <span class="step-detail">Visual references</span>
+                            </div>
+                        </div>
+                        <div class="step-connector"></div>
+                        <div class="pipeline-step" data-step="structure">
+                            <div class="step-icon">2</div>
+                            <div class="step-info">
+                                <span class="step-name">Structure</span>
+                                <span class="step-detail">JSON generation</span>
+                            </div>
+                        </div>
+                        <div class="step-connector"></div>
+                        <div class="pipeline-step" data-step="render">
+                            <div class="step-icon">3</div>
+                            <div class="step-info">
+                                <span class="step-name">Render</span>
+                                <span class="step-detail">Image output</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <p id="loading-text">Analyzing text with AI...</p>
+                </div>
+
+                <div id="result" class="hidden">
+                    <div class="result-header">
+                        <span id="result-info"></span>
+                        <div class="result-actions">
+                            <button class="btn-small" onclick="downloadImage()">Download</button>
+                        </div>
+                    </div>
+                    <div class="preview-container">
+                        <img id="preview-img" alt="Generated infographic">
+                    </div>
+                </div>
+
+                <div id="json-view" class="hidden">
+                    <h3>Structured Data (JSON)</h3>
+                    <pre id="json-content"></pre>
+                </div>
+
+                <div id="error" class="error hidden">
+                    <p id="error-text"></p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
