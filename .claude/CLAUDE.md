@@ -1,5 +1,9 @@
 # tech-infographic-generator — CLAUDE.md
 
+## Règles Git — OBLIGATOIRE
+- **Ne JAMAIS ajouter** `Co-Authored-By: Claude` ou toute mention de Claude dans les messages de commit
+- Les commits appartiennent uniquement à `sallfatima`
+
 ## Projet
 Générateur automatisé d'infographies techniques dans le style des meilleures newsletters data/AI.
 Input : description textuelle → Output : infographie interactive (React) + export PNG/GIF (Python PIL).
