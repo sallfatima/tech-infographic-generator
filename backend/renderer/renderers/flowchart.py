@@ -276,16 +276,6 @@ def _render_whiteboard(
         sc = section_colors[i % len(section_colors)]
         color = node.color or sc["border"]
 
-        # Step number above node
-        draw_step_number(
-            draw, (x + w // 2, y - 20),
-            i + 1,
-            bg_color="#FFFFFF",
-            border_color=sc["border"],
-            text_color=sc["border"],
-            radius=15,
-        )
-
         # Node with white fill and colored border
         draw_node(
             img, draw,
@@ -300,6 +290,16 @@ def _render_whiteboard(
             text_muted_color=theme["text_muted"],
             accent_color=color,
             icon_color=color,
+        )
+
+        # Step number badge on the top-left corner of the node (on border)
+        draw_step_number(
+            draw, (x + 18, y),
+            i + 1,
+            bg_color="#FFFFFF",
+            border_color=sc["border"],
+            text_color=sc["border"],
+            radius=13,
         )
 
     # Footer

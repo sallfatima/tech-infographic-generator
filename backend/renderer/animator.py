@@ -106,7 +106,9 @@ class InfographicAnimator:
         3. For each frame, draw dots at interpolated positions along paths
         """
         # Step 1: Render the complete static diagram
-        base_img = self.renderer.render_to_image(data, width, height)
+        # Keep the original canvas size so animated dots align with layout coordinates.
+        # Auto-cropping here breaks alignment because path extraction uses the full canvas.
+        base_img = self.renderer.render_to_image(data, width, height, auto_crop=False)
         base_img = base_img.convert("RGB")
 
         # Step 2: Extract arrow paths between connected nodes
@@ -318,7 +320,7 @@ class InfographicAnimator:
         ):
             cols = 3 if len(node_ids) > 4 else 2 if len(node_ids) > 2 else 1
             return layout_grid(
-                node_ids, width, height, cols=cols, header_h=header_h,
+                node_ids, width, height, cols=cols, header_h=header_h, nodes=data.nodes,
             )
 
         if data.type in (
@@ -328,13 +330,13 @@ class InfographicAnimator:
             InfographicType.MULTI_AGENT,
         ):
             return layout_flow_horizontal(
-                node_ids, width, height, header_h=header_h,
+                node_ids, width, height, header_h=header_h, nodes=data.nodes,
             )
 
         # Fallback: grid layout
         cols = 3 if len(node_ids) > 4 else 2 if len(node_ids) > 2 else 1
         return layout_grid(
-            node_ids, width, height, cols=cols, header_h=header_h,
+            node_ids, width, height, cols=cols, header_h=header_h, nodes=data.nodes,
         )
 
     def _get_path_colors(

@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from ..models.infographic import InfographicData
 from ..renderer.engine import ProRenderer
 from ..renderer.animator import InfographicAnimator
+from ..renderer.render_preset import apply_render_preset
 
 router = APIRouter()
 
@@ -24,6 +25,7 @@ class ExportRequest(BaseModel):
     theme: str = "whiteboard"
     width: int = 1400
     height: int = 900
+    render_preset: str | None = None
 
 
 class ExportGifRequest(ExportRequest):
@@ -40,6 +42,7 @@ async def export_png(request: ExportRequest):
     """
     try:
         data = InfographicData(**request.infographic_data)
+        data = apply_render_preset(data, request.render_preset, for_gif=False)
         renderer = ProRenderer(request.theme)
         img = renderer.render_to_image(data, request.width, request.height)
 
@@ -65,6 +68,7 @@ async def export_gif(request: ExportGifRequest):
     """
     try:
         data = InfographicData(**request.infographic_data)
+        data = apply_render_preset(data, request.render_preset, for_gif=True)
         animator = InfographicAnimator(request.theme)
 
         # generate_gif retourne un Path, on lit le fichier

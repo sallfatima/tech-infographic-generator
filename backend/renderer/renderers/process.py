@@ -101,20 +101,29 @@ def _render_guidebook(
         x2, y2, w2, h2 = positions[n2.id]
         sc = section_colors[i % len(section_colors)]
 
-        # Determine arrow direction based on grid position
-        col1, col2 = i % cols, (i + 1) % cols
-        row1, row2 = i // cols, (i + 1) // cols
+        # Determine arrow direction based on actual positions (not just col/row indices)
+        # This correctly handles grid wrapping (e.g. end of row 1 → start of row 2)
+        cx1, cy1 = x1 + w1 // 2, y1 + h1 // 2
+        cx2, cy2 = x2 + w2 // 2, y2 + h2 // 2
+        is_same_row = abs(cy1 - cy2) < h1 // 2
 
-        if row1 == row2:
-            start = (x1 + w1, y1 + h1 // 2)
-            end = (x2, y2 + h2 // 2)
+        if is_same_row:
+            # Horizontal: right edge → left edge
+            start = (x1 + w1, cy1)
+            end = (x2, cy2)
         else:
-            start = (x1 + w1 // 2, y1 + h1)
-            end = (x2 + w2 // 2, y2)
+            # Vertical: bottom edge → top edge (row wrap)
+            start = (cx1, y1 + h1)
+            end = (cx2, y2)
+
+        conn_label = None
+        if data.connections and i < len(data.connections):
+            conn_label = data.connections[i].label
 
         draw_numbered_arrow(
             draw, start, end,
             number=i + 1,
+            label=conn_label,
             color=sc["border"],
             dashed=True,
             width=2,
@@ -144,10 +153,10 @@ def _render_guidebook(
             icon_color="#FFFFFF",
         )
 
-        # Numbered badge in the top-left corner
+        # Numbered badge in the top-left corner (offset outside the card)
         draw_numbered_badge(
             draw,
-            (x + 18, y + 5),
+            (x + 18, y - 5),
             i + 1,
             bg_color="#FFFFFF",
             text_color=sc["border"],
@@ -237,20 +246,26 @@ def _render_whiteboard(
         x2, y2, w2, h2 = positions[n2.id]
         sc = section_colors[i % len(section_colors)]
 
-        col1, col2 = i % cols, (i + 1) % cols
-        row1, row2 = i // cols, (i + 1) // cols
+        # Use actual positions to determine direction (handles grid wrapping)
+        cx1, cy1 = x1 + w1 // 2, y1 + h1 // 2
+        cx2, cy2 = x2 + w2 // 2, y2 + h2 // 2
+        is_same_row = abs(cy1 - cy2) < h1 // 2
 
-        if row1 == row2:
-            start = (x1 + w1, y1 + h1 // 2)
-            end = (x2, y2 + h2 // 2)
+        if is_same_row:
+            start = (x1 + w1, cy1)
+            end = (x2, cy2)
         else:
-            start = (x1 + w1 // 2, y1 + h1)
-            end = (x2 + w2 // 2, y2)
+            start = (cx1, y1 + h1)
+            end = (cx2, y2)
+
+        conn_label = None
+        if data.connections and i < len(data.connections):
+            conn_label = data.connections[i].label
 
         draw_bezier_arrow(
             draw, start, end,
             color=sc["border"], width=2, dashed=True,
-            curvature=0.15, label=None,
+            curvature=0.15, label=conn_label,
         )
 
     # Draw node cards ON TOP of arrows
@@ -272,62 +287,70 @@ def _render_whiteboard(
             sc["border"], width=2, dash=8, gap=5, radius=12,
         )
 
-        # Step number in top-left
+        # Step number badge on border (straddles top-left, not inside content)
         draw_step_number(
-            draw, (x + 30, y + 28),
+            draw, (x + 24, y),
             i + 1,
             bg_color="#FFFFFF",
             border_color=sc["border"],
             text_color=sc["border"],
-            radius=18,
+            radius=16,
         )
 
         # Icon in top-right with background (SwirlAI style)
+        icon_bottom = y + 28
         if node.icon:
-            icon_bg_size = min(36, h // 4)
+            icon_bg_size = min(32, max(20, h // 5))
             icon_inner = int(icon_bg_size * 0.6)
-            draw_icon_with_bg(img, draw, node.icon.value, (x + w - 30, y + 28),
+            draw_icon_with_bg(img, draw, node.icon.value, (x + w - 28, y + 24),
                               icon_size=icon_inner, bg_size=icon_bg_size,
                               icon_color="#FFFFFF", bg_color=sc["border"])
+            icon_bottom = y + 24 + icon_bg_size // 2
 
-        # Label — adaptive font, no forced truncation
-        max_label_w = w - 70  # account for step number + icon
+        # Label — adaptive font, positioned below step number area
+        label_top = y + 12
+        max_label_w = w - 65  # account for step number + icon
         label_font = get_font(14, "bold")
         for fs in range(17, 11, -1):
             label_font = get_font(fs, "bold")
-            lw, _ = text_size(draw, node.label, label_font)
+            lw, lh = text_size(draw, node.label, label_font)
             if lw <= max_label_w:
                 break
         display_label = node.label
-        lw, _ = text_size(draw, display_label, label_font)
+        lw, lh = text_size(draw, display_label, label_font)
         if lw > max_label_w:
             while lw > max_label_w and len(display_label) > 3:
                 display_label = display_label[:-1]
-                lw, _ = text_size(draw, display_label + "..", label_font)
+                lw, lh = text_size(draw, display_label + "..", label_font)
             display_label += ".."
+            lw, lh = text_size(draw, display_label, label_font)
 
         draw.text(
-            (x + 58, y + 16),
+            (x + 50, label_top),
             display_label,
             fill=hex_to_rgb(theme["text"]),
             font=label_font,
         )
 
-        # Description — dynamic max_lines
+        # Description — dynamic max_lines based on actual remaining space
+        desc_top = max(label_top + lh + 6, icon_bottom + 4)
         if node.description:
-            desc_fs = min(12, max(9, h // 10))
-            desc_font = get_font(desc_fs, "regular")
-            line_h = int(desc_fs * 1.4)
-            remaining_h = (y + h - 8) - (y + 52)
-            available_lines = max(1, remaining_h // line_h)
-            draw_text_block(
-                draw, node.description,
-                (x + 18, y + 52),
-                desc_font,
-                hex_to_rgb(theme["text_muted"]),
-                w - 36,
-                max_lines=available_lines,
-            )
+            remaining_h = (y + h - 8) - desc_top
+            if remaining_h > 12:
+                desc_fs = min(12, max(9, h // 10))
+                if remaining_h < 30:
+                    desc_fs = 9
+                desc_font = get_font(desc_fs, "regular")
+                line_h = int(desc_fs * 1.4)
+                available_lines = max(1, remaining_h // line_h)
+                draw_text_block(
+                    draw, node.description,
+                    (x + 14, desc_top),
+                    desc_font,
+                    hex_to_rgb(theme["text_muted"]),
+                    w - 28,
+                    max_lines=available_lines,
+                )
 
     # Footer
     if data.footer:
@@ -383,15 +406,17 @@ def _render_dark(
         x2, y2, w2, h2 = positions[n2.id]
         color = node_colors[i % len(node_colors)]
 
-        col1, col2 = i % cols, (i + 1) % cols
-        row1, row2 = i // cols, (i + 1) // cols
+        # Use actual positions to determine direction
+        cx1, cy1 = x1 + w1 // 2, y1 + h1 // 2
+        cx2, cy2 = x2 + w2 // 2, y2 + h2 // 2
+        is_same_row = abs(cy1 - cy2) < h1 // 2
 
-        if row1 == row2:
-            start = (x1 + w1, y1 + h1 // 2)
-            end = (x2, y2 + h2 // 2)
+        if is_same_row:
+            start = (x1 + w1, cy1)
+            end = (x2, cy2)
         else:
-            start = (x1 + w1 // 2, y1 + h1)
-            end = (x2 + w2 // 2, y2)
+            start = (cx1, y1 + h1)
+            end = (cx2, y2)
 
         draw_straight_arrow(
             draw, start, end,
@@ -413,15 +438,15 @@ def _render_dark(
         # Left accent bar
         draw_rounded_rect(draw, (x, y, x + 4, y + h), 2, color)
 
-        # Step number badge
-        badge_r = 20
-        badge_cx = x + 35
-        badge_cy = y + 32
+        # Step number badge — proportional to card size
+        badge_r = min(18, h // 6)
+        badge_cx = x + 10 + badge_r
+        badge_cy = y + 10 + badge_r
         draw.ellipse(
             (badge_cx - badge_r, badge_cy - badge_r, badge_cx + badge_r, badge_cy + badge_r),
             fill=hex_to_rgb(color),
         )
-        num_font = get_font(16, "bold")
+        num_font = get_font(max(11, badge_r), "bold")
         num_text = str(i + 1)
         nw, nh = text_size(draw, num_text, num_font)
         draw.text(
@@ -433,45 +458,52 @@ def _render_dark(
 
         # Icon
         if node.icon:
-            paste_icon(img, node.icon.value, (x + w - 35, y + 30), 24, color)
+            icon_size = min(24, h // 5)
+            paste_icon(img, node.icon.value, (x + w - 30, y + 10 + badge_r), icon_size, color)
 
-        # Label — adaptive font, no forced truncation
-        max_label_w = w - 80
+        # Label — adaptive font, positioned next to badge
+        label_x = badge_cx + badge_r + 8
+        max_label_w = (x + w - 10) - label_x
         label_font = get_font(14, "bold")
         for fs in range(17, 11, -1):
             label_font = get_font(fs, "bold")
-            lw, _ = text_size(draw, node.label, label_font)
+            lw, lh = text_size(draw, node.label, label_font)
             if lw <= max_label_w:
                 break
         display_label = node.label
-        lw, _ = text_size(draw, display_label, label_font)
+        lw, lh = text_size(draw, display_label, label_font)
         if lw > max_label_w:
             while lw > max_label_w and len(display_label) > 3:
                 display_label = display_label[:-1]
-                lw, _ = text_size(draw, display_label + "..", label_font)
+                lw, lh = text_size(draw, display_label + "..", label_font)
             display_label += ".."
+            lw, lh = text_size(draw, display_label, label_font)
 
         draw.text(
-            (x + 65, y + 20),
+            (label_x, badge_cy - lh // 2),
             display_label,
             fill=hex_to_rgb(theme["text"]),
             font=label_font,
         )
 
-        # Description — dynamic max_lines
+        # Description — dynamic max_lines based on actual remaining space
+        desc_top = max(badge_cy + badge_r + 6, y + 10 + badge_r * 2 + 8)
         if node.description:
-            desc_fs = min(13, max(9, h // 10))
-            desc_font = get_font(desc_fs, "regular")
-            line_h = int(desc_fs * 1.4)
-            remaining_h = (y + h - 8) - (y + 55)
-            available_lines = max(1, remaining_h // line_h)
-            draw_text_block(
-                draw, node.description,
-                (x + 20, y + 55),
-                desc_font,
-                hex_to_rgb(theme["text_muted"]),
-                w - 40,
-                max_lines=available_lines,
-            )
+            remaining_h = (y + h - 8) - desc_top
+            if remaining_h > 12:
+                desc_fs = min(13, max(9, h // 10))
+                if remaining_h < 30:
+                    desc_fs = 9
+                desc_font = get_font(desc_fs, "regular")
+                line_h = int(desc_fs * 1.4)
+                available_lines = max(1, remaining_h // line_h)
+                draw_text_block(
+                    draw, node.description,
+                    (x + 14, desc_top),
+                    desc_font,
+                    hex_to_rgb(theme["text_muted"]),
+                    w - 28,
+                    max_lines=available_lines,
+                )
 
     return img

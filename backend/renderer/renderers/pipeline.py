@@ -138,31 +138,32 @@ def _render_guidebook(
                     arrow_label = conn.label
                     break
 
-            if arrow_len > 80:
+            if arrow_len > 60:
                 # Enough space for number + label
                 draw_numbered_arrow(
                     draw,
                     (ax_start, ay),
                     (ax_end, ay),
                     number=i + 1,
-                    label=arrow_label,
+                    label=arrow_label if arrow_len > 100 else None,
                     color=sc["border"],
                     width=2,
                     head_size=10,
                     dashed=True,
+                    badge_size=min(20, arrow_len // 4),
                 )
             else:
-                # Short arrow: just arrow + small step number, skip label
+                # Short arrow: just arrow + small step number above
                 draw_straight_arrow(
                     draw, (ax_start, ay), (ax_end, ay),
                     color=sc["border"], width=2, dashed=True, head_size=8,
                 )
                 mid_x = (ax_start + ax_end) // 2
                 draw_step_number(
-                    draw, (mid_x - 9, ay - 22),
+                    draw, (mid_x, ay - 20),
                     i + 1, bg_color="#FFFFFF",
                     border_color=sc["border"],
-                    text_color=sc["border"], radius=9,
+                    text_color=sc["border"], radius=8,
                 )
 
     # Footer
@@ -361,36 +362,28 @@ def _render_whiteboard(
                             conn_label = conn.label
                             break
 
+            ax_start = (prev_x + prev_w, sy + stage_h // 2)
+            ax_end = (curr_x, curr_y + stage_h // 2)
+
             draw_bezier_arrow(
-                draw,
-                (prev_x + prev_w, sy + stage_h // 2),
-                (curr_x, curr_y + stage_h // 2),
+                draw, ax_start, ax_end,
                 color=sc["border"], width=2, dashed=True,
-                curvature=0.15, label=None,
+                curvature=0.15, label=conn_label,
             )
 
-            # Step number above arrow + label below
-            ax_mid = sx + stage_w + arrow_gap // 2
+            # Step number centered above arrow midpoint (not overlapping nodes)
+            ax_mid_x = (ax_start[0] + ax_end[0]) // 2
+            ax_mid_y = min(ax_start[1], ax_end[1])
+            num_y = ax_mid_y - 22
             draw_step_number(
                 draw,
-                (ax_mid - 12, cy - stage_h // 2 - 30),
+                (ax_mid_x, num_y),
                 i + 1,
                 bg_color="#FFFFFF",
                 border_color=sc["border"],
                 text_color=sc["border"],
-                radius=12,
+                radius=11,
             )
-            if conn_label:
-                lbl_font = get_font(9, "semibold")
-                lw, lh = text_size(draw, conn_label, lbl_font)
-                lpad = 3
-                lx = ax_mid - lw // 2
-                ly = cy - stage_h // 2 - 30 + 26
-                draw.rounded_rectangle(
-                    (lx - lpad, ly - lpad, lx + lw + lpad, ly + lh + lpad),
-                    radius=3, fill=(255, 255, 255), outline=hex_to_rgb(sc["border"]), width=1,
-                )
-                draw.text((lx, ly), conn_label, fill=hex_to_rgb(sc["border"]), font=lbl_font)
 
     # Footer
     if data.footer:

@@ -8,6 +8,7 @@
 
 import { useDiagramState } from "../../hooks/useDiagramState";
 import type { PipelineStatus } from "../../types/infographic";
+import { Check, X, Loader2 } from "lucide-react";
 
 interface StepDef {
   id: PipelineStatus;
@@ -88,18 +89,11 @@ export function PipelineProgress() {
                 }`}
               >
                 {state === "completed" ? (
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                    <path d="M5 13l4 4L19 7" />
-                  </svg>
+                  <Check size={16} strokeWidth={3} />
                 ) : state === "failed" ? (
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                    <path d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X size={16} strokeWidth={3} />
                 ) : state === "active" ? (
-                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
-                    <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" fill="currentColor" className="opacity-75" />
-                  </svg>
+                  <Loader2 size={16} className="animate-spin" />
                 ) : (
                   step.number
                 )}

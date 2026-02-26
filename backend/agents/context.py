@@ -110,6 +110,7 @@ class PipelineContext:
     output_format: str = "png"
     frame_duration: int = 600       # for GIF format
     enable_research: bool = True    # can disable research agent
+    render_preset: Optional[str] = None  # optional render-time compaction preset
 
     # --- Pipeline state ---
     stage: PipelineStage = PipelineStage.INITIALIZED

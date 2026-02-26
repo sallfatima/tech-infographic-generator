@@ -279,32 +279,51 @@ def _render_whiteboard(
         content_y = y + padding + 4
         cx_node = x + w // 2
 
+        max_content_y = y + h - 8  # bottom padding
+
         # Icon with background (SwirlAI style)
-        if node.icon:
-            icon_bg_size = min(36, h // 4)
+        if node.icon and (max_content_y - content_y) > 40:
+            icon_bg_size = min(32, max(20, h // 5))
             icon_inner = int(icon_bg_size * 0.6)
             draw_icon_with_bg(img, draw, node.icon.value, (cx_node, content_y + icon_bg_size // 2),
                               icon_size=icon_inner, bg_size=icon_bg_size,
                               icon_color="#FFFFFF", bg_color=sc["border"])
             content_y += icon_bg_size + 4
 
-        # Label
-        label_font = get_font(min(14, max(11, h // 6)), "bold")
-        lw, lh = text_size(draw, node.label, label_font)
-        draw.text(
-            (cx_node - lw // 2, content_y),
-            node.label,
-            fill=hex_to_rgb(theme["text"]),
-            font=label_font,
-        )
-        content_y += lh + 2
+        # Label — adaptive font with truncation
+        if content_y < max_content_y - 10:
+            max_lbl_w = w - padding * 2
+            label_fs = min(14, max(11, h // 6))
+            label_font = get_font(label_fs, "bold")
+            lw, lh = text_size(draw, node.label, label_font)
+            display_label = node.label
+            if lw > max_lbl_w:
+                for fs in range(label_fs - 1, 9, -1):
+                    label_font = get_font(fs, "bold")
+                    lw, lh = text_size(draw, display_label, label_font)
+                    if lw <= max_lbl_w:
+                        break
+                if lw > max_lbl_w:
+                    while lw > max_lbl_w and len(display_label) > 3:
+                        display_label = display_label[:-1]
+                        lw, lh = text_size(draw, display_label + "..", label_font)
+                    display_label += ".."
+                    lw, lh = text_size(draw, display_label, label_font)
+            draw.text(
+                (cx_node - lw // 2, content_y),
+                display_label,
+                fill=hex_to_rgb(theme["text"]),
+                font=label_font,
+            )
+            content_y += lh + 2
 
-        # Description — use smaller font to fit more text
-        if node.description and h > 60:
-            remaining_h = (y + h - 8) - content_y
-            if remaining_h > 10:
-                # Use smaller font (9px) to show more description text
-                desc_fs = min(9, max(8, h // 12))
+        # Description — use readable font size based on available space
+        if node.description:
+            remaining_h = max_content_y - content_y
+            if remaining_h > 12:
+                desc_fs = min(10, max(9, h // 10))
+                if remaining_h < 25:
+                    desc_fs = 9
                 desc_font = get_font(desc_fs, "regular")
                 from ..typography import draw_text_block
                 line_h = int(desc_fs * 1.35)
@@ -334,36 +353,49 @@ def _render_whiteboard(
         # Content
         cx_center = x + w // 2
         content_y = y + 12
+        max_center_y = y + h - 8
 
-        if center_node.icon:
-            icon_bg_size = min(36, h // 4)
+        if center_node.icon and (max_center_y - content_y) > 50:
+            icon_bg_size = min(36, max(22, h // 4))
             icon_inner = int(icon_bg_size * 0.6)
-            draw_icon_with_bg(img, draw, center_node.icon.value, (cx_center, content_y + 14),
+            draw_icon_with_bg(img, draw, center_node.icon.value,
+                              (cx_center, content_y + icon_bg_size // 2),
                               icon_size=icon_inner, bg_size=icon_bg_size,
                               icon_color="#FFFFFF", bg_color=sc0["border"])
-            content_y += 32
+            content_y += icon_bg_size + 4
 
-        label_font = get_font(18, "bold")
+        # Label — adaptive font for center node
+        max_lbl_w = w - 20
+        label_fs = min(18, max(13, w // 12))
+        label_font = get_font(label_fs, "bold")
         lw, lh = text_size(draw, center_node.label, label_font)
+        if lw > max_lbl_w:
+            for fs in range(label_fs - 1, 11, -1):
+                label_font = get_font(fs, "bold")
+                lw, lh = text_size(draw, center_node.label, label_font)
+                if lw <= max_lbl_w:
+                    break
         draw.text(
             (cx_center - lw // 2, content_y),
             center_node.label,
             fill=hex_to_rgb("#FFFFFF"),
             font=label_font,
         )
+        content_y += lh + 4
 
         if center_node.description:
-            desc_font = get_font(9, "regular")
-            desc_text = center_node.description
-            remaining_h = (y + h - 8) - (content_y + lh + 4)
-            line_h = int(9 * 1.35)
-            max_desc_lines = max(1, remaining_h // line_h)
-            from ..typography import draw_text_block
-            draw_text_block(
-                draw, desc_text, (x + 10, content_y + lh + 4),
-                desc_font, hex_to_rgb("#E2E8F0"), w - 20,
-                line_height=line_h, max_lines=max_desc_lines, align="center",
-            )
+            remaining_h = max_center_y - content_y
+            if remaining_h > 12:
+                desc_fs = min(10, max(9, h // 10))
+                desc_font = get_font(desc_fs, "regular")
+                line_h = int(desc_fs * 1.35)
+                max_desc_lines = max(1, remaining_h // line_h)
+                from ..typography import draw_text_block
+                draw_text_block(
+                    draw, center_node.description, (x + 10, content_y),
+                    desc_font, hex_to_rgb("#E2E8F0"), w - 20,
+                    line_height=line_h, max_lines=max_desc_lines, align="center",
+                )
 
     return img
 

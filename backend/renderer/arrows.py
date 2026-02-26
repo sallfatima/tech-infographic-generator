@@ -75,6 +75,60 @@ def _draw_dashed_line(
         pos += segment
 
 
+def _find_clear_label_position(
+    center: tuple[int, int],
+    label_w: int,
+    label_h: int,
+    occupied_rects: list[tuple[int, int, int, int]] | None = None,
+    offsets: list[tuple[int, int]] | None = None,
+) -> tuple[int, int]:
+    """Find a label position that avoids overlapping occupied rectangles.
+
+    Tries multiple offset positions (above, below, right, left) and returns
+    the first non-overlapping one. Falls back to the first offset if all overlap.
+
+    Args:
+        center: (x, y) center point to place label near
+        label_w: width of the label box
+        label_h: height of the label box
+        occupied_rects: list of (x, y, w, h) node bounding boxes
+        offsets: list of (dx, dy) offsets to try, relative to center
+    Returns:
+        (x, y) top-left position for the label
+    """
+    if offsets is None:
+        offsets = [
+            (0, -(label_h + 8)),   # above
+            (0, label_h + 8),      # below
+            (label_w // 2 + 10, 0),  # right
+            (-(label_w // 2 + 10), 0),  # left
+        ]
+
+    cx, cy = center
+    if not occupied_rects:
+        # No collision data: use first offset
+        off = offsets[0]
+        return (cx - label_w // 2 + off[0], cy - label_h // 2 + off[1])
+
+    for off_x, off_y in offsets:
+        lx = cx - label_w // 2 + off_x
+        ly = cy - label_h // 2 + off_y
+        lr = lx + label_w
+        lb = ly + label_h
+
+        overlap = False
+        for rx, ry, rw, rh in occupied_rects:
+            if lx < rx + rw and lr > rx and ly < ry + rh and lb > ry:
+                overlap = True
+                break
+        if not overlap:
+            return (lx, ly)
+
+    # Fallback: use first offset
+    off = offsets[0]
+    return (cx - label_w // 2 + off[0], cy - label_h // 2 + off[1])
+
+
 def _manhattan_route(
     start: tuple[int, int],
     end: tuple[int, int],

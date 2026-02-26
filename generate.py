@@ -170,7 +170,8 @@ def batch(description, count, style, palette):
 @click.option("--height", "-h", type=int, default=900)
 @click.option("--format", "fmt", type=click.Choice(["png", "gif"]), default="png")
 @click.option("--output", "-o", type=str, default=None)
-def pro(description, theme, infographic_type, width, height, fmt, output):
+@click.option("--render-preset", type=click.Choice(["reference_clean"]), default=None)
+def pro(description, theme, infographic_type, width, height, fmt, output, render_preset):
     """Generate a professional infographic using LLM + Pro Renderer.
 
     Requires ANTHROPIC_API_KEY or OPENAI_API_KEY in .env.
@@ -181,6 +182,7 @@ def pro(description, theme, infographic_type, width, height, fmt, output):
     from backend.analyzer.llm_analyzer import LLMAnalyzer
     from backend.renderer.engine import ProRenderer
     from backend.renderer.animator import InfographicAnimator
+    from backend.renderer.render_preset import apply_render_preset
 
     description = description.replace("\\n", "\n")
 
@@ -196,6 +198,7 @@ def pro(description, theme, infographic_type, width, height, fmt, output):
     with console.status("[bold blue]Analyzing text with AI..."):
         analyzer = LLMAnalyzer()
         data = asyncio.run(analyzer.analyze(description, infographic_type))
+    data = apply_render_preset(data, render_preset, for_gif=(fmt == "gif"))
 
     console.print(f"[cyan]Detected type:[/cyan] {data.type.value}")
     console.print(f"[cyan]Nodes:[/cyan] {len(data.nodes)} | [cyan]Connections:[/cyan] {len(data.connections)}")

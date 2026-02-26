@@ -239,37 +239,38 @@ def _render_guidebook(
                     start = get_node_left(from_pos)
                     end = get_node_right(to_pos)
 
-            # Distance-based rendering — avoid overlap on short arrows
+            # Distance-based rendering — adaptive thresholds
             arrow_dist = math.sqrt((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2)
             is_horiz = abs(end[0] - start[0]) > abs(end[1] - start[1])
             is_same_layer = (from_layer == to_layer)
 
-            if arrow_dist > 280 and not is_same_layer:
-                # Long inter-layer arrow: full numbered arrow with label
+            if arrow_dist > 150 and not is_same_layer:
+                # Inter-layer arrow: numbered arrow with label if enough space
                 draw_numbered_arrow(
                     draw, start, end,
                     number=ci + 1,
-                    label=conn.label,
+                    label=conn.label if arrow_dist > 200 else None,
                     color=conn_color,
                     width=2,
                     dashed=True,
-                    badge_size=16,
+                    badge_size=min(18, max(12, int(arrow_dist * 0.06))),
                 )
-            elif arrow_dist > 200 and not is_same_layer:
-                # Medium inter-layer arrow: arrow + small step number, no label
+            elif arrow_dist > 60:
+                # Medium or same-layer arrow: arrow + small step number offset to side
                 draw_straight_arrow(draw, start, end, color=conn_color, width=2, dashed=True, head_size=8)
-                t = 0.20
+                t = 0.35
                 num_x = int(start[0] + t * (end[0] - start[0]))
                 num_y = int(start[1] + t * (end[1] - start[1]))
-                off_x = -25 if not is_horiz else 0
-                off_y = -25 if is_horiz else 0
+                # Offset perpendicular to arrow direction so number doesn't overlap line
+                off_x = -18 if not is_horiz else 0
+                off_y = -18 if is_horiz else 0
                 draw_step_number(
-                    draw, (num_x + off_x - 8, num_y + off_y - 8),
+                    draw, (num_x + off_x, num_y + off_y),
                     ci + 1, bg_color="#FFFFFF", border_color=conn_color,
                     text_color=conn_color, radius=8,
                 )
             else:
-                # Same-layer or short arrow: just the dashed arrow, no step number
+                # Very short arrow: just the dashed arrow, no step number
                 draw_straight_arrow(draw, start, end, color=conn_color, width=2, dashed=True, head_size=8)
 
     # Footer
@@ -482,33 +483,33 @@ def _render_whiteboard(
             is_horizontal = abs(end[0] - start[0]) > abs(end[1] - start[1])
             is_same_layer = (from_layer == to_layer)
 
-            # Use bezier dashed arrows — no labels on the arrow line itself
+            # Use bezier dashed arrows with connection labels
             draw_bezier_arrow(
                 draw, start, end,
                 color=conn_color, width=2, dashed=True,
-                curvature=0.15, label=None,
+                curvature=0.15,
+                label=conn.label if arrow_dist > 150 and not is_same_layer else None,
             )
 
-            # Step numbers only on long inter-layer arrows (avoid same-layer clutter)
-            if arrow_dist > 200 and not is_same_layer:
-                # Long arrow: step number at ~25% along the path, well clear of nodes
+            # Step numbers on inter-layer arrows
+            if arrow_dist > 100 and not is_same_layer:
                 t = 0.25
                 num_x = int(start[0] + t * (end[0] - start[0]))
                 num_y = int(start[1] + t * (end[1] - start[1]))
-                # Offset step number away from the arrow path to prevent overlap
+                # Offset perpendicular to arrow to avoid line overlap
                 if not is_horizontal:
-                    num_x -= 35  # shift further left of vertical arrows
+                    num_x -= 22
                 else:
-                    num_y -= 25  # shift above horizontal arrows
+                    num_y -= 20
+                r = min(11, max(8, int(arrow_dist * 0.04)))
                 draw_step_number(
-                    draw, (num_x - 11, num_y - 11),
+                    draw, (num_x, num_y),
                     ci + 1,
                     bg_color="#FFFFFF",
                     border_color=conn_color,
                     text_color=conn_color,
-                    radius=11,
+                    radius=r,
                 )
-            # Skip step numbers for same-layer and short arrows to avoid overlap
 
     # Footer
     if data.footer:

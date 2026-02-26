@@ -194,9 +194,28 @@ def draw_section_box(
     else:
         draw.rounded_rectangle(bbox, radius=10, outline=hex_to_rgb(border_color), width=border_width)
 
-    # Title label in top area
+    # Title label in top area — adaptive font size + truncation
+    max_title_w = (x1 - x0) - 60  # 20px margin each side + padding
     title_font = get_font(18, "bold")
     tw, th = text_size(draw, title, title_font)
+
+    # Scale down font if title is too wide
+    if tw > max_title_w:
+        for fs in range(17, 12, -1):
+            title_font = get_font(fs, "bold")
+            tw, th = text_size(draw, title, title_font)
+            if tw <= max_title_w:
+                break
+
+    # Truncate with ".." if still too wide
+    display_title = title
+    if tw > max_title_w:
+        while tw > max_title_w and len(display_title) > 3:
+            display_title = display_title[:-1]
+            tw, th = text_size(draw, display_title + "..", title_font)
+        display_title = display_title + ".."
+        tw, th = text_size(draw, display_title, title_font)
+
     title_pad = 10
     # Title box
     title_x = x0 + 20
@@ -210,7 +229,7 @@ def draw_section_box(
     )
     draw.text(
         (title_x, title_y),
-        title,
+        display_title,
         fill=hex_to_rgb(text_color),
         font=title_font,
     )
@@ -344,23 +363,21 @@ def draw_node_with_header(
 
     # Body content below header — use space efficiently
     body_top = y0 + header_h + 4
-    body_h = h - header_h - 8
     body_w = w - 14
     content_y = body_top
+    max_body_y = y1 - 6  # leave 6px bottom padding
 
     # Icon in body (smaller, only if enough room)
-    if icon_name and body_h > 45:
-        icon_size = min(20, body_h // 4)
+    if icon_name and (max_body_y - content_y) > 40:
+        icon_size = min(20, (max_body_y - content_y) // 4)
         paste_icon(img, icon_name, (cx, content_y + icon_size // 2), icon_size, accent_color)
         content_y += icon_size + 3
 
     # Description — dynamic max_lines based on remaining space
-    if description and body_h > 20:
-        remaining_h = (y1 - 6) - content_y
-        # Only draw if there's meaningful space left
+    if description:
+        remaining_h = max_body_y - content_y
         if remaining_h > 12:
             desc_fs = min(11, max(9, h // 10))
-            # If remaining space is very tight, use smaller font
             if remaining_h < 25:
                 desc_fs = 9
             desc_font = get_font(desc_fs, "regular")
@@ -480,84 +497,81 @@ def draw_node(
     # Also track bottom_margin for shapes that eat bottom space
     bottom_margin = 6  # default
     if shape == "cylinder":
-        # Cylinder has top+bottom ellipses, each (y1-y0)//5 high
         ellipse_h = (y1 - y0) // 5
-        content_y = y0 + ellipse_h + 4  # start below top ellipse + small gap
-        content_w = w - padding * 2 - 8  # slightly narrower for cylinder body
-        bottom_margin = ellipse_h + 2  # fully exclude bottom ellipse zone
+        content_y = y0 + ellipse_h + 4
+        content_w = w - padding * 2 - 8
+        bottom_margin = ellipse_h + 2
     elif shape == "hexagon":
-        # Hexagon has angled edges — reduce usable width by ~35%
         content_w = int(w * 0.60)
         content_y = y0 + padding + 4
     elif shape == "diamond":
-        # Diamond has angled edges — reduce usable width significantly
         content_w = int(w * 0.55)
-        content_y = y0 + h // 4  # start at 25% down
-        bottom_margin = h // 4  # bottom 25% also unusable
+        content_y = y0 + h // 4
+        bottom_margin = h // 4
     elif shape == "circle":
-        # Circle has curved edges — reduce usable width
         content_w = int(w * 0.60)
         content_y = y0 + h // 5
         bottom_margin = h // 5
 
+    # Ensure content_w is at least minimally usable
+    content_w = max(content_w, 40)
+
+    # Compute the maximum y where content can be drawn
+    max_content_y = y1 - bottom_margin - 4
+
     # Icon — smaller for special shapes that have limited content area
-    if icon_name:
+    if icon_name and content_y < max_content_y - 20:
         if shape in ("cylinder", "hexagon", "diamond", "circle"):
-            icon_size = min(20, h // 6)  # smaller icon for constrained shapes
+            icon_size = min(20, h // 6)
         else:
             icon_size = min(28, h // 4)
         paste_icon(img, icon_name, (cx, content_y + icon_size // 2), icon_size, icon_color)
         content_y += icon_size + 4
 
     # Label — truncate if wider than content area; smaller for special shapes
-    if shape in ("cylinder", "hexagon", "diamond", "circle"):
-        max_label_fs = min(14, max(10, h // 7))
-    else:
-        max_label_fs = min(16, max(11, h // 6))
-    label_font = get_font(max_label_fs, "bold")
-    lw, lh = text_size(draw, label, label_font)
-    display_label = label
-    if lw > content_w:
-        # Try smaller font first
-        for fs in range(max_label_fs - 1, 9, -1):
-            label_font = get_font(fs, "bold")
-            lw, lh = text_size(draw, display_label, label_font)
-            if lw <= content_w:
-                break
-        # If still too wide, truncate
+    if content_y < max_content_y - 10:
+        if shape in ("cylinder", "hexagon", "diamond", "circle"):
+            max_label_fs = min(14, max(10, h // 7))
+        else:
+            max_label_fs = min(16, max(11, h // 6))
+        label_font = get_font(max_label_fs, "bold")
+        lw, lh = text_size(draw, label, label_font)
+        display_label = label
         if lw > content_w:
-            while lw > content_w and len(display_label) > 3:
-                display_label = display_label[:-1]
-                lw, lh = text_size(draw, display_label + "..", label_font)
-            display_label += ".."
-            lw, lh = text_size(draw, display_label, label_font)
-    draw.text(
-        (cx - lw // 2, content_y),
-        display_label,
-        fill=hex_to_rgb(text_color),
-        font=label_font,
-    )
-    content_y += lh + 4
+            for fs in range(max_label_fs - 1, 9, -1):
+                label_font = get_font(fs, "bold")
+                lw, lh = text_size(draw, display_label, label_font)
+                if lw <= content_w:
+                    break
+            if lw > content_w:
+                while lw > content_w and len(display_label) > 3:
+                    display_label = display_label[:-1]
+                    lw, lh = text_size(draw, display_label + "..", label_font)
+                display_label += ".."
+                lw, lh = text_size(draw, display_label, label_font)
+        draw.text(
+            (cx - lw // 2, content_y),
+            display_label,
+            fill=hex_to_rgb(text_color),
+            font=label_font,
+        )
+        content_y += lh + 4
 
     # Description — dynamic max_lines based on remaining card space
-    if description and h > 70:
-        remaining_h = (y1 - bottom_margin) - content_y
+    if description:
+        remaining_h = max_content_y - content_y
         # Only draw description if there's meaningful space left
         if remaining_h > 12:
             desc_fs = min(12, max(9, h // 8))
-            # If remaining space is very tight, use smaller font
             if remaining_h < 30:
                 desc_fs = 9
             desc_font = get_font(desc_fs, "regular")
             line_h = int(desc_fs * 1.4)
             available_lines = max(1, remaining_h // line_h)
-            # Use darker text color for shapes with light fills (cylinder, cloud)
-            # to ensure readability against the shape background
             if shape in ("cylinder", "cloud"):
                 desc_color = hex_to_rgb(text_color)
             else:
                 desc_color = hex_to_rgb(text_muted_color)
-            # Center text within content_w, accounting for shape offset
             text_x = cx - content_w // 2
             draw_text_block(
                 draw, description,
@@ -618,8 +632,26 @@ def draw_zone_group(
 
     # Title label ON the top border (SwirlAI style — white pill straddling the border)
     if title:
+        max_title_w = (x1 - x0) - 80
+        # Adaptive font size: try 14 down to 10
         title_font = get_font(14, "bold")
         tw, th = text_size(draw, title, title_font)
+        if tw > max_title_w:
+            for fs in range(13, 9, -1):
+                title_font = get_font(fs, "bold")
+                tw, th = text_size(draw, title, title_font)
+                if tw <= max_title_w:
+                    break
+        # Truncate if still too wide
+        display_title = title
+        if tw > max_title_w:
+            while tw > max_title_w and len(display_title) > 3:
+                display_title = display_title[:-1]
+                tw, th = text_size(draw, display_title + "..", title_font)
+            display_title = display_title + ".."
+            tw, th = text_size(draw, display_title, title_font)
+        else:
+            display_title = title
         pad = 8
         # Position: centered on top border, slightly inside
         tx = x0 + 25
@@ -633,7 +665,7 @@ def draw_zone_group(
             outline=hex_to_rgb(border_color),
             width=1,
         )
-        draw.text((tx, ty), title, fill=hex_to_rgb(text_color), font=title_font)
+        draw.text((tx, ty), display_title, fill=hex_to_rgb(text_color), font=title_font)
 
     return draw  # return updated draw context
 

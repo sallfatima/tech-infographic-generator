@@ -14,6 +14,7 @@ import { useDiagramState } from "../../hooks/useDiagramState";
 import RoughNode from "./RoughNode";
 import RoughEdge from "./RoughEdge";
 import ZoneBox from "./ZoneBox";
+import LegendBox from "./LegendBox";
 
 /** Dimensions du canvas SVG. */
 const CANVAS_W = 1400;
@@ -56,6 +57,7 @@ export default function DiagramCanvas() {
   const selectedNodeId = useDiagramState((s) => s.selectedNodeId);
   const themeName = useDiagramState((s) => s.themeName);
   const zoom = useDiagramState((s) => s.zoom);
+  const showLegend = useDiagramState((s) => s.showLegend);
   const selectNode = useDiagramState((s) => s.selectNode);
   const updateNodePosition = useDiagramState((s) => s.updateNodePosition);
   const updateNodeLabel = useDiagramState((s) => s.updateNodeLabel);
@@ -333,6 +335,16 @@ export default function DiagramCanvas() {
               );
             })}
         </AnimatePresence>
+
+        {/* Legende (toggle via Toolbar) */}
+        {showLegend && (
+          <LegendBox
+            data={data}
+            theme={theme}
+            canvasW={CANVAS_W}
+            canvasH={CANVAS_H}
+          />
+        )}
       </svg>
 
       {/* Overlay input pour édition inline */}

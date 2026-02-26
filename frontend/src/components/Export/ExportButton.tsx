@@ -8,6 +8,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useDiagramState } from "../../hooks/useDiagramState";
 import { useExport } from "../../hooks/useExport";
+import { Download, Loader2, ChevronDown } from "lucide-react";
 
 export default function ExportButton() {
   const data = useDiagramState((s) => s.data);
@@ -17,7 +18,7 @@ export default function ExportButton() {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Fermer le menu au clic extérieur
+  // Fermer le menu au clic exterieur
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -35,6 +36,7 @@ export default function ExportButton() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={isExporting}
+        aria-label="Menu d'export"
         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium
                    bg-emerald-600 text-white rounded-md
                    hover:bg-emerald-700 disabled:bg-slate-300
@@ -42,64 +44,30 @@ export default function ExportButton() {
       >
         {isExporting ? (
           <>
-            <svg
-              className="animate-spin h-3.5 w-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-            >
-              <circle
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="3"
-                className="opacity-25"
-              />
-              <path
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                fill="currentColor"
-                className="opacity-75"
-              />
-            </svg>
+            <Loader2 size={14} className="animate-spin" />
             Export...
           </>
         ) : (
           <>
-            <svg
-              className="w-3.5 h-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-            </svg>
+            <Download size={14} />
             Export
-            <svg
-              className="w-3 h-3"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M6 9l6 6 6-6" />
-            </svg>
+            <ChevronDown size={12} />
           </>
         )}
       </button>
 
       {/* Dropdown menu */}
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50">
+        <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 py-1 z-50">
           <button
             onClick={() => {
               exportSvg();
               setIsOpen(false);
             }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700
-                       hover:bg-slate-50 transition-colors cursor-pointer"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200
+                       hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
           >
-            <span className="w-5 h-5 rounded bg-blue-100 text-blue-600 text-[10px] font-bold flex items-center justify-center">
+            <span className="w-5 h-5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[10px] font-bold flex items-center justify-center">
               SVG
             </span>
             Export SVG
@@ -111,10 +79,10 @@ export default function ExportButton() {
               exportToPng(data, themeName);
               setIsOpen(false);
             }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700
-                       hover:bg-slate-50 transition-colors cursor-pointer"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200
+                       hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
           >
-            <span className="w-5 h-5 rounded bg-green-100 text-green-600 text-[10px] font-bold flex items-center justify-center">
+            <span className="w-5 h-5 rounded bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 text-[10px] font-bold flex items-center justify-center">
               PNG
             </span>
             Export PNG
@@ -126,10 +94,10 @@ export default function ExportButton() {
               exportToGif(data, themeName);
               setIsOpen(false);
             }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700
-                       hover:bg-slate-50 transition-colors cursor-pointer"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200
+                       hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
           >
-            <span className="w-5 h-5 rounded bg-purple-100 text-purple-600 text-[10px] font-bold flex items-center justify-center">
+            <span className="w-5 h-5 rounded bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 text-[10px] font-bold flex items-center justify-center">
               GIF
             </span>
             Export GIF
@@ -137,7 +105,7 @@ export default function ExportButton() {
           </button>
 
           {exportError && (
-            <div className="px-3 py-2 text-xs text-red-500 border-t border-slate-100">
+            <div className="px-3 py-2 text-xs text-red-500 border-t border-slate-100 dark:border-slate-700">
               {exportError}
             </div>
           )}

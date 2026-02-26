@@ -137,10 +137,12 @@ def layout_layered(
     n_layers = len(layers)
     available_h = canvas_h - header_h - margin
     layer_h = available_h // n_layers
-    layer_gap = 8
-    # Allow taller nodes to show full descriptions — adaptive to space
-    node_h = min(layer_h - layer_gap * 2 - 10, 160)
-    node_h = max(node_h, 70)  # minimum readable height
+    # Reserve space for step number badges (radius ~16px) + arrow labels (~20px)
+    # + extra padding so arrows don't collide with node content
+    label_reserve = 45
+    layer_gap = max(30, label_reserve)
+    # Map node ids to node objects so we can measure content per-layer.
+    nodes_by_id = {getattr(n, "id", None): n for n in nodes}
 
     for li, layer in enumerate(layers):
         layer_y = header_h + li * layer_h
@@ -166,10 +168,32 @@ def layout_layered(
         total_nodes_w = n_nodes * node_w + (n_nodes - 1) * gap
         start_x = margin + (usable_w - total_nodes_w) // 2
 
+        # Content-aware node height for this layer (helps avoid text overlap in dense
+        # architecture cards with long descriptions).
+        layer_nodes = [nodes_by_id[nid] for nid in node_ids if nid in nodes_by_id]
+        max_node_h = max(70, min(220, layer_h - label_reserve - 16))
+        if layer_nodes:
+            measured = measure_content_heights(
+                layer_nodes,
+                node_w,
+                is_header_style=True,
+                min_h=70,
+                max_h=max_node_h,
+            )
+            node_h = max(measured.values()) if measured else max_node_h
+        else:
+            node_h = min(max_node_h, 160)
+        node_h = max(70, min(node_h, max_node_h))
+
+        # Reserve a little more space near the top for layer labels / arrows.
+        top_reserve = min(max(label_reserve, 34), max(34, layer_h // 2))
+        bottom_reserve = 12
+        usable_layer_h = max(node_h, layer_h - top_reserve - bottom_reserve)
+        node_y = layer_y + top_reserve + max(0, (usable_layer_h - node_h) // 2)
+
         for ni, nid in enumerate(node_ids):
             x = start_x + ni * (node_w + gap)
-            y = layer_y + (layer_h - node_h) // 2
-            positions[nid] = (x, y, node_w, node_h)
+            positions[nid] = (x, node_y, node_w, node_h)
 
     return positions
 
@@ -192,7 +216,9 @@ def layout_flow_horizontal(
         return positions
 
     usable_w = canvas_w - margin * 2
-    gap = 50
+    # Adaptive gap: enough room for numbered arrow badges (badge ~20px + label ~40px)
+    # Minimum 65px gap ensures step numbers + labels don't overlap nodes
+    gap = max(65, min(85, (usable_w - n * 120) // max(n - 1, 1)))
     node_w = min((usable_w - (n - 1) * gap) // n, 200)
 
     # Content-aware height
@@ -255,8 +281,8 @@ def layout_grid(
     cols: int = 3,
     margin: int = 50,
     header_h: int = 100,
-    row_gap: int = 12,
-    col_gap: int = 12,
+    row_gap: int = 40,
+    col_gap: int = 20,
     footer_h: int = 28,
     nodes=None,
 ) -> dict[str, tuple[int, int, int, int]]:
@@ -292,7 +318,7 @@ def layout_grid(
 
         # Check if total fits; if not, scale down proportionally
         total_rows_h = sum(row_heights)
-        arrow_space = (rows - 1) * 50  # minimum gap for arrows between rows
+        arrow_space = (rows - 1) * 70  # gap for numbered arrows + labels between rows
         available_for_cards = usable_h - arrow_space
         if total_rows_h > available_for_cards and available_for_cards > 0:
             scale = available_for_cards / total_rows_h

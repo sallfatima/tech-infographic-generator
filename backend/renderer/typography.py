@@ -59,9 +59,14 @@ def wrap_text(
     font: ImageFont.FreeTypeFont,
     max_width: int,
 ) -> list[str]:
-    """Word-wrap text to fit within max_width pixels."""
+    """Word-wrap text to fit within max_width pixels.
+
+    Handles long words that exceed max_width by breaking them with hyphens.
+    """
+    if max_width < 10:
+        return [text]
     words = text.split()
-    lines = []
+    lines: list[str] = []
     current = ""
     for word in words:
         test = f"{current} {word}".strip()
@@ -71,7 +76,23 @@ def wrap_text(
         else:
             if current:
                 lines.append(current)
-            current = word
+            # Check if the single word itself exceeds max_width
+            word_bbox = draw.textbbox((0, 0), word, font=font)
+            word_w = word_bbox[2] - word_bbox[0]
+            if word_w > max_width:
+                # Character-level break with hyphen for long words
+                part = ""
+                for char in word:
+                    test_part = part + char + "-"
+                    pw = draw.textbbox((0, 0), test_part, font=font)[2]
+                    if pw > max_width and part:
+                        lines.append(part + "-")
+                        part = char
+                    else:
+                        part += char
+                current = part
+            else:
+                current = word
     if current:
         lines.append(current)
     return lines
@@ -95,7 +116,19 @@ def draw_text_block(
     lines = wrap_text(draw, text, font, max_width)
     x, y = pos
 
-    for i, line in enumerate(lines[:max_lines]):
+    # Add ellipsis to last visible line if text was truncated
+    total_lines = len(lines)
+    visible = lines[:max_lines]
+    if total_lines > max_lines and visible:
+        last = visible[-1].rstrip() + "..."
+        # Shrink ellipsis text if it exceeds max_width
+        ew = draw.textbbox((0, 0), last, font=font)[2]
+        while ew > max_width and len(last) > 4:
+            last = last[:-4] + "..."
+            ew = draw.textbbox((0, 0), last, font=font)[2]
+        visible[-1] = last
+
+    for i, line in enumerate(visible):
         if align == "center":
             bbox = draw.textbbox((0, 0), line, font=font)
             lw = bbox[2] - bbox[0]
@@ -107,7 +140,7 @@ def draw_text_block(
         else:
             draw.text((x, y + i * line_height), line, fill=fill, font=font)
 
-    return min(len(lines), max_lines) * line_height
+    return len(visible) * line_height
 
 
 def text_size(draw: ImageDraw.Draw, text: str, font: ImageFont.FreeTypeFont) -> tuple[int, int]:

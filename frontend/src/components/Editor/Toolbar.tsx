@@ -5,9 +5,14 @@
  * download direct, et ExportButton.
  */
 
+import { useState } from "react";
 import { useDiagramState, useTemporalStore } from "../../hooks/useDiagramState";
 import { listThemeNames } from "../../lib/themes";
 import ExportButton from "../Export/ExportButton";
+import SharePanel from "../Export/SharePanel";
+import {
+  Undo2, Redo2, ZoomIn, ZoomOut, Maximize2, Download, Info, Share2,
+} from "lucide-react";
 
 const THEME_NAMES = listThemeNames();
 
@@ -17,6 +22,21 @@ const LAYOUT_OPTIONS = [
   { value: "horizontal", label: "Horizontal" },
   { value: "radial", label: "Radial" },
 ] as const;
+
+/** Tooltip wrapper reutilisable. */
+function Tip({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <span className="group relative inline-flex">
+      {children}
+      <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-0.5
+                        text-[10px] bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-800
+                        rounded opacity-0 group-hover:opacity-100 transition-opacity
+                        pointer-events-none whitespace-nowrap z-50 shadow-sm">
+        {label}
+      </span>
+    </span>
+  );
+}
 
 export default function Toolbar() {
   const themeName = useDiagramState((s) => s.themeName);
@@ -33,6 +53,10 @@ export default function Toolbar() {
   const setShowJsonView = useDiagramState((s) => s.setShowJsonView);
   const generatedImageUrl = useDiagramState((s) => s.generatedImageUrl);
   const generatedFilename = useDiagramState((s) => s.generatedFilename);
+  const showLegend = useDiagramState((s) => s.showLegend);
+  const setShowLegend = useDiagramState((s) => s.setShowLegend);
+
+  const [shareOpen, setShareOpen] = useState(false);
 
   const temporal = useTemporalStore();
 
@@ -51,7 +75,7 @@ export default function Toolbar() {
 
   return (
     <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-sm flex-wrap">
-      {/* ─── Theme ─── */}
+      {/* --- Theme --- */}
       <div className="flex items-center gap-1.5">
         <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">Theme</span>
         <div className="flex rounded-md overflow-hidden border border-slate-200 dark:border-slate-600">
@@ -73,7 +97,7 @@ export default function Toolbar() {
 
       <div className="w-px h-5 bg-slate-200 dark:bg-slate-600" />
 
-      {/* ─── Layout ─── */}
+      {/* --- Layout --- */}
       <div className="flex items-center gap-1.5">
         <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">Layout</span>
         <select
@@ -83,6 +107,7 @@ export default function Toolbar() {
               e.target.value as "auto" | "vertical" | "horizontal" | "radial",
             )
           }
+          aria-label="Mode de layout"
           className="px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer"
         >
           {LAYOUT_OPTIONS.map((opt) => (
@@ -95,7 +120,7 @@ export default function Toolbar() {
 
       <div className="w-px h-5 bg-slate-200 dark:bg-slate-600" />
 
-      {/* ─── View Mode Toggle ─── */}
+      {/* --- View Mode Toggle --- */}
       <div className="flex items-center gap-1.5">
         <span className="text-slate-500 dark:text-slate-400 text-xs font-medium">Vue</span>
         <div className="flex rounded-md overflow-hidden border border-slate-200 dark:border-slate-600">
@@ -136,87 +161,114 @@ export default function Toolbar() {
 
       <div className="w-px h-5 bg-slate-200 dark:bg-slate-600" />
 
-      {/* ─── Undo / Redo ─── */}
+      {/* --- Undo / Redo --- */}
       <div className="flex items-center gap-1">
-        <button
-          onClick={handleUndo}
-          title="Undo (Ctrl+Z)"
-          className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 10h10a5 5 0 015 5v2" />
-            <path d="M3 10l4-4M3 10l4 4" />
-          </svg>
-        </button>
-        <button
-          onClick={handleRedo}
-          title="Redo (Ctrl+Shift+Z)"
-          className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 10H11a5 5 0 00-5 5v2" />
-            <path d="M21 10l-4-4M21 10l-4 4" />
-          </svg>
-        </button>
+        <Tip label="Annuler (Ctrl+Z)">
+          <button
+            onClick={handleUndo}
+            aria-label="Annuler"
+            className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
+          >
+            <Undo2 size={16} />
+          </button>
+        </Tip>
+        <Tip label="Retablir (Ctrl+Shift+Z)">
+          <button
+            onClick={handleRedo}
+            aria-label="Retablir"
+            className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
+          >
+            <Redo2 size={16} />
+          </button>
+        </Tip>
       </div>
 
       <div className="w-px h-5 bg-slate-200 dark:bg-slate-600" />
 
-      {/* ─── Zoom ─── */}
+      {/* --- Zoom --- */}
       <div className="flex items-center gap-1">
-        <button
-          onClick={() => zoomBy(0.8)}
-          title="Zoom out"
-          className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" />
-            <path d="M21 21l-4.35-4.35M8 11h6" />
-          </svg>
-        </button>
+        <Tip label="Zoom arriere">
+          <button
+            onClick={() => zoomBy(0.8)}
+            aria-label="Zoom arriere"
+            className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
+          >
+            <ZoomOut size={16} />
+          </button>
+        </Tip>
         <span className="text-xs text-slate-500 dark:text-slate-400 w-10 text-center tabular-nums">
           {Math.round(zoom * 100)}%
         </span>
-        <button
-          onClick={() => zoomBy(1.25)}
-          title="Zoom in"
-          className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" />
-            <path d="M21 21l-4.35-4.35M8 11h6M11 8v6" />
-          </svg>
-        </button>
-        <button
-          onClick={fitToScreen}
-          title="Fit to screen"
-          className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M8 3H5a2 2 0 00-2 2v3M21 8V5a2 2 0 00-2-2h-3M3 16v3a2 2 0 002 2h3M16 21h3a2 2 0 002-2v-3" />
-          </svg>
-        </button>
+        <Tip label="Zoom avant">
+          <button
+            onClick={() => zoomBy(1.25)}
+            aria-label="Zoom avant"
+            className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
+          >
+            <ZoomIn size={16} />
+          </button>
+        </Tip>
+        <Tip label="Ajuster a l'ecran">
+          <button
+            onClick={fitToScreen}
+            aria-label="Ajuster a l'ecran"
+            className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
+          >
+            <Maximize2 size={16} />
+          </button>
+        </Tip>
       </div>
+
+      <div className="w-px h-5 bg-slate-200 dark:bg-slate-600" />
+
+      {/* --- Legend toggle --- */}
+      <Tip label="Legende">
+        <button
+          onClick={() => setShowLegend(!showLegend)}
+          aria-label="Toggle legende"
+          className={`p-1.5 rounded transition-colors cursor-pointer ${
+            showLegend
+              ? "bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
+              : "hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
+          }`}
+        >
+          <Info size={16} />
+        </button>
+      </Tip>
+
+      {/* --- Share --- */}
+      <Tip label="Partager">
+        <button
+          onClick={() => setShareOpen(true)}
+          aria-label="Partager"
+          className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
+        >
+          <Share2 size={16} />
+        </button>
+      </Tip>
 
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* ─── Download (si image generee) ─── */}
+      {/* --- Download (si image generee) --- */}
       {generatedImageUrl && (
-        <button
-          onClick={handleDownload}
-          title="Telecharger l'image"
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors cursor-pointer"
-        >
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-          </svg>
-          Download
-        </button>
+        <Tip label="Telecharger l'image">
+          <button
+            onClick={handleDownload}
+            aria-label="Telecharger l'image"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors cursor-pointer"
+          >
+            <Download size={14} />
+            Download
+          </button>
+        </Tip>
       )}
 
-      {/* ─── Export ─── */}
+      {/* --- Export --- */}
       <ExportButton />
+
+      {/* --- SharePanel modal --- */}
+      <SharePanel isOpen={shareOpen} onClose={() => setShareOpen(false)} />
     </div>
   );
 }

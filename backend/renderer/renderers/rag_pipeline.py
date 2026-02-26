@@ -109,7 +109,7 @@ def _render_guidebook(
 
             draw_node_with_header(
                 img, draw, (sx, sy, sx + stage_w, sy + row_h),
-                label=node.label[:22], description=node.description,
+                label=node.label, description=node.description,
                 icon_name=node.icon.value if node.icon else None,
                 fill_color="#FFFFFF", border_color=sc["border"],
                 text_color=theme["text"], text_muted_color=theme["text_muted"],
@@ -264,24 +264,30 @@ def _render_whiteboard(
         else:
             icon_y += 15
 
-        # Label — adaptive font
+        # Label — adaptive font with truncation
         max_label_w = stage_w - 24
         label_font = get_font(16, "bold")
         for fs in range(16, 10, -1):
             label_font = get_font(fs, "bold")
-            lw, _ = text_size(draw, node.label, label_font)
+            lw, lh = text_size(draw, node.label, label_font)
             if lw <= max_label_w:
                 break
         display_label = node.label
-        lw, _ = text_size(draw, display_label, label_font)
+        lw, lh = text_size(draw, display_label, label_font)
+        if lw > max_label_w:
+            while lw > max_label_w and len(display_label) > 3:
+                display_label = display_label[:-1]
+                lw, lh = text_size(draw, display_label + "..", label_font)
+            display_label += ".."
+            lw, lh = text_size(draw, display_label, label_font)
         draw.text(
             (sx + (stage_w - lw) // 2, icon_y),
             display_label, fill=hex_to_rgb(theme["text"]), font=label_font,
         )
 
-        # Description — dynamic max_lines
+        # Description — dynamic max_lines based on actual label position
         if node.description:
-            desc_top = icon_y + 28
+            desc_top = icon_y + lh + 6
             remaining_h = (sy + stage_h - 8) - desc_top
             desc_fs = min(11, max(9, stage_w // 25))
             desc_font = get_font(desc_fs, "regular")
@@ -298,37 +304,27 @@ def _render_whiteboard(
             ax_end = ax_start + arrow_gap - 10
             ay = cy
 
-            draw_bezier_arrow(
-                draw, (ax_start, ay), (ax_end, ay),
-                color=sc["border"], width=2, dashed=True,
-                curvature=0.15, label=None,
-            )
-            # Step number above the arrow, not on top of it
-            ax_mid = (ax_start + ax_end) // 2
-            draw_step_number(
-                draw, (ax_mid - 12, cy - stage_h // 2 - 28),
-                i + 1, bg_color="#FFFFFF", border_color=sc["border"],
-                text_color=sc["border"], radius=12,
-            )
-            # Connection label below step number if exists
+            # Find connection label
+            conn_label = None
             if data.connections:
-                conn_label = None
                 next_node = data.nodes[i + 1]
                 for conn in data.connections:
                     if conn.from_node == node.id and conn.to_node == next_node.id:
                         conn_label = conn.label
                         break
-                if conn_label:
-                    lbl_font = get_font(9, "semibold")
-                    lw, lh = text_size(draw, conn_label, lbl_font)
-                    lpad = 3
-                    lx = ax_mid - lw // 2
-                    ly = cy - stage_h // 2 - 28 + 26
-                    draw.rounded_rectangle(
-                        (lx - lpad, ly - lpad, lx + lw + lpad, ly + lh + lpad),
-                        radius=3, fill=(255, 255, 255), outline=hex_to_rgb(sc["border"]), width=1,
-                    )
-                    draw.text((lx, ly), conn_label, fill=hex_to_rgb(sc["border"]), font=lbl_font)
+
+            draw_bezier_arrow(
+                draw, (ax_start, ay), (ax_end, ay),
+                color=sc["border"], width=2, dashed=True,
+                curvature=0.15, label=conn_label,
+            )
+            # Step number centered above arrow
+            ax_mid = (ax_start + ax_end) // 2
+            draw_step_number(
+                draw, (ax_mid, ay - 22),
+                i + 1, bg_color="#FFFFFF", border_color=sc["border"],
+                text_color=sc["border"], radius=11,
+            )
 
     return img
 

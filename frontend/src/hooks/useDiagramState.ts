@@ -98,6 +98,9 @@ interface DiagramState {
   /** Theme sombre pour l'app shell. */
   darkAppTheme: boolean;
 
+  /** Afficher la legende dans le canvas. */
+  showLegend: boolean;
+
   // ─── Actions ────────────────────────────────────────────────────
 
   setInputText: (text: string) => void;
@@ -158,6 +161,7 @@ interface DiagramState {
   setViewMode: (mode: ViewMode) => void;
   setShowJsonView: (show: boolean) => void;
   setDarkAppTheme: (dark: boolean) => void;
+  setShowLegend: (show: boolean) => void;
 
   /** Generation complete : analyse LLM + rendu PIL → image URL. */
   generate: (text: string) => Promise<void>;
@@ -215,6 +219,7 @@ export const useDiagramState = create<DiagramState>()(
       viewMode: "svg" as ViewMode,
       showJsonView: false,
       darkAppTheme: false,
+      showLegend: false,
 
       setInputText: (text) => set({ inputText: text }),
 
@@ -222,7 +227,8 @@ export const useDiagramState = create<DiagramState>()(
         set({ isLoading: true, error: null });
         try {
           const data = await analyzeText(text);
-          const posMap = layoutNodes(data, CANVAS_W, CANVAS_H);
+          const { layoutMode } = get();
+          const posMap = layoutNodes(data, CANVAS_W, CANVAS_H, layoutMode);
           set({
             data,
             isLoading: false,
@@ -237,7 +243,8 @@ export const useDiagramState = create<DiagramState>()(
       },
 
       setData: (data) => {
-        const posMap = layoutNodes(data, CANVAS_W, CANVAS_H);
+        const { layoutMode } = get();
+        const posMap = layoutNodes(data, CANVAS_W, CANVAS_H, layoutMode);
         set({
           data,
           error: null,
@@ -247,9 +254,9 @@ export const useDiagramState = create<DiagramState>()(
       },
 
       recalcPositions: () => {
-        const { data } = get();
+        const { data, layoutMode } = get();
         if (!data) return;
-        const posMap = layoutNodes(data, CANVAS_W, CANVAS_H);
+        const posMap = layoutNodes(data, CANVAS_W, CANVAS_H, layoutMode);
         set({ positions: layoutResultToRecord(posMap) });
       },
 
@@ -333,7 +340,7 @@ export const useDiagramState = create<DiagramState>()(
         set({ layoutMode: mode });
         const { data } = get();
         if (data) {
-          const posMap = layoutNodes(data, CANVAS_W, CANVAS_H);
+          const posMap = layoutNodes(data, CANVAS_W, CANVAS_H, mode);
           set({ positions: layoutResultToRecord(posMap) });
         }
       },
@@ -373,6 +380,7 @@ export const useDiagramState = create<DiagramState>()(
       setViewMode: (mode) => set({ viewMode: mode }),
       setShowJsonView: (show) => set({ showJsonView: show }),
       setDarkAppTheme: (dark) => set({ darkAppTheme: dark }),
+      setShowLegend: (show) => set({ showLegend: show }),
 
       generate: async (text) => {
         const {
@@ -413,7 +421,8 @@ export const useDiagramState = create<DiagramState>()(
             });
 
             const data = result.infographic_data;
-            const posMap = layoutNodes(data, CANVAS_W, CANVAS_H);
+            const { layoutMode: lm } = get();
+            const posMap = layoutNodes(data, CANVAS_W, CANVAS_H, lm);
 
             set({
               data,
@@ -440,7 +449,8 @@ export const useDiagramState = create<DiagramState>()(
             });
 
             const data = result.infographic_data;
-            const posMap = layoutNodes(data, CANVAS_W, CANVAS_H);
+            const { layoutMode: lm2 } = get();
+            const posMap = layoutNodes(data, CANVAS_W, CANVAS_H, lm2);
 
             set({
               data,

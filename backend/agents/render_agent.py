@@ -14,6 +14,7 @@ from pathlib import Path
 from ..models.infographic import InfographicData
 from ..renderer.engine import ProRenderer
 from ..renderer.animator import InfographicAnimator
+from ..renderer.render_preset import apply_render_preset
 from .base import BaseAgent
 from .context import (
     PipelineContext,
@@ -67,14 +68,21 @@ class RenderAgent(BaseAgent):
             )
 
             # 2. Render image
+            render_data = apply_render_preset(
+                ctx.infographic_data,
+                ctx.render_preset,
+                for_gif=(ctx.output_format == "gif"),
+            )
+            ctx.infographic_data = render_data
+
             if ctx.output_format == "gif":
                 file_path, filename = self._render_gif(
-                    ctx.infographic_data, theme_name,
+                    render_data, theme_name,
                     ctx.width, ctx.height, ctx.frame_duration,
                 )
             else:
                 file_path, filename = self._render_png(
-                    ctx.infographic_data, theme_name,
+                    render_data, theme_name,
                     ctx.width, ctx.height,
                 )
 

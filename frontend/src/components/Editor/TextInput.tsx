@@ -11,6 +11,7 @@
 import { useState } from "react";
 import { useDiagramState } from "../../hooks/useDiagramState";
 import { GenerateOptions } from "./GenerateOptions";
+import { Loader2, Zap, Sparkles, X } from "lucide-react";
 
 /** Texte placeholder pour guider l'utilisateur. */
 const PLACEHOLDER = `Decris ton infographie technique...
@@ -77,21 +78,26 @@ export default function TextInput() {
       </div>
 
       {/* Textarea */}
-      <textarea
-        value={localText}
-        onChange={(e) => setLocalText(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder={PLACEHOLDER}
-        disabled={isLoading}
-        className="flex-1 min-h-[160px] p-4 rounded-lg border border-slate-200
-                   bg-white text-sm text-slate-800
-                   placeholder:text-slate-400 resize-none
-                   focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400
-                   disabled:opacity-50 disabled:cursor-not-allowed
-                   dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100
-                   dark:placeholder:text-gray-500
-                   transition-all"
-      />
+      <div className="relative">
+        <textarea
+          value={localText}
+          onChange={(e) => setLocalText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={PLACEHOLDER}
+          disabled={isLoading}
+          className="flex-1 w-full min-h-[160px] p-4 pb-6 rounded-lg border border-slate-200
+                     bg-white text-sm text-slate-800
+                     placeholder:text-slate-400 resize-none
+                     focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400
+                     disabled:opacity-50 disabled:cursor-not-allowed
+                     dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100
+                     dark:placeholder:text-gray-500
+                     transition-all"
+        />
+        <span className="absolute bottom-1.5 right-3 text-[10px] text-slate-400 dark:text-slate-500 tabular-nums">
+          {localText.length} car.
+        </span>
+      </div>
 
       {/* Options de generation */}
       <GenerateOptions />
@@ -109,38 +115,12 @@ export default function TextInput() {
         >
           {isLoading ? (
             <>
-              <svg
-                className="animate-spin h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-              >
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  className="opacity-25"
-                />
-                <path
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  fill="currentColor"
-                  className="opacity-75"
-                />
-              </svg>
+              <Loader2 size={16} className="animate-spin" />
               Generation en cours...
             </>
           ) : (
             <>
-              <svg
-                className="w-4 h-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+              {generateMode === "pro" ? <Sparkles size={16} /> : <Zap size={16} />}
               {buttonLabel}
             </>
           )}
@@ -164,13 +144,23 @@ export default function TextInput() {
 
       {/* Raccourci clavier */}
       <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center">
-        Ctrl+Enter pour generer
+        {typeof navigator !== "undefined" && navigator.platform.includes("Mac")
+          ? "Cmd" : "Ctrl"}+Enter pour generer
       </p>
 
       {/* Erreur */}
       {error && (
-        <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
-          <strong>Erreur :</strong> {error}
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
+          <div className="flex-1">
+            <strong>Erreur :</strong> {error}
+          </div>
+          <button
+            onClick={() => useDiagramState.setState({ error: null })}
+            className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 cursor-pointer"
+            aria-label="Fermer l'erreur"
+          >
+            <X size={14} />
+          </button>
         </div>
       )}
     </div>

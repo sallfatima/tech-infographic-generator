@@ -85,10 +85,12 @@ export function GenerateOptions() {
       <div className="grid grid-cols-3 gap-2">
         {/* Type */}
         <div>
-          <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1">
+          <label htmlFor="gen-type" className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1">
             Type
           </label>
           <select
+            id="gen-type"
+            aria-label="Type d'infographie"
             value={infographicType ?? "auto"}
             onChange={(e) =>
               setInfographicType(e.target.value === "auto" ? null : e.target.value)
@@ -105,10 +107,12 @@ export function GenerateOptions() {
 
         {/* Format */}
         <div>
-          <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1">
+          <label htmlFor="gen-format" className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1">
             Format
           </label>
           <select
+            id="gen-format"
+            aria-label="Format de sortie"
             value={outputFormat}
             onChange={(e) => setOutputFormat(e.target.value as OutputFormat)}
             className="w-full rounded border border-gray-200 bg-white px-2 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
@@ -120,10 +124,12 @@ export function GenerateOptions() {
 
         {/* Size */}
         <div>
-          <label className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1">
+          <label htmlFor="gen-size" className="block text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1">
             Taille
           </label>
           <select
+            id="gen-size"
+            aria-label="Taille de sortie"
             value={outputSize}
             onChange={(e) => setOutputSize(e.target.value as OutputSize)}
             className="w-full rounded border border-gray-200 bg-white px-2 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"

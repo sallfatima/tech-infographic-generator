@@ -95,6 +95,7 @@ class ProRenderer:
         width: int = 1400,
         height: int = 900,
         output_path: str | None = None,
+        auto_crop: bool = True,
     ) -> Path:
         """Render an infographic to PNG.
 
@@ -110,9 +111,10 @@ class ProRenderer:
         renderer_fn = RENDERERS.get(data.type, render_infographic)
         img = renderer_fn(data, width, height, self.theme)
 
-        # Auto-crop empty space from bottom/right
-        bg_color = hex_to_rgb(self.theme.get("bg", "#FFFFFF"))
-        img = _auto_crop(img, bg_color, margin=25)
+        if auto_crop:
+            # Auto-crop empty space from bottom/right
+            bg_color = hex_to_rgb(self.theme.get("bg", "#FFFFFF"))
+            img = _auto_crop(img, bg_color, margin=25)
 
         if output_path is None:
             Path("output").mkdir(exist_ok=True)
@@ -128,13 +130,15 @@ class ProRenderer:
         data: InfographicData,
         width: int = 1400,
         height: int = 900,
+        auto_crop: bool = True,
     ) -> Image.Image:
         """Render and return the PIL Image (no file save)."""
         renderer_fn = RENDERERS.get(data.type, render_infographic)
         img = renderer_fn(data, width, height, self.theme)
 
-        # Auto-crop empty space from bottom/right
-        bg_color = hex_to_rgb(self.theme.get("bg", "#FFFFFF"))
-        img = _auto_crop(img, bg_color, margin=25)
+        if auto_crop:
+            # Auto-crop empty space from bottom/right
+            bg_color = hex_to_rgb(self.theme.get("bg", "#FFFFFF"))
+            img = _auto_crop(img, bg_color, margin=25)
 
         return img

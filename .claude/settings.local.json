@@ -14,7 +14,27 @@
       "Bash(ls:*)",
       "Bash(python test_all_renderers.py:*)",
       "Bash(python -c:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git stash:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(git checkout:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(brew install:*)",
+      "Bash(DYLD_LIBRARY_PATH=/opt/homebrew/lib python:*)",
+      "Bash(curl:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(grep:*)",
+      "Bash(source .venv/bin/activate:*)",
+      "Bash(source:*)",
+      "Bash(DYLD_LIBRARY_PATH=/opt/homebrew/lib python3:*)",
+      "WebFetch(domain:ui.shadcn.com)",
+      "Bash(python -m py_compile:*)",
+      "Bash(python:*)",
+      "Bash(brew list:*)",
+      "Bash(DYLD_LIBRARY_PATH=/opt/homebrew/lib:$DYLD_LIBRARY_PATH python:*)",
+      "Bash(gh repo view:*)"
     ]
   }
 }

@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from ..analyzer.llm_analyzer import LLMAnalyzer
 from ..renderer.engine import ProRenderer
 from ..renderer.animator import InfographicAnimator
+from ..renderer.render_preset import apply_render_preset
 from ..agents import InfographicPipeline, PipelineContext
 
 router = APIRouter()
@@ -37,6 +38,7 @@ class GenerateRequest(BaseModel):
     height: int = 900
     format: str = "png"
     frame_duration: int = 500
+    render_preset: str | None = None
 
 
 class GenerateResponse(BaseModel):
@@ -82,6 +84,11 @@ async def generate(request: GenerateRequest):
 
         # Override theme if specified
         data.color_scheme = request.theme
+        data = apply_render_preset(
+            data,
+            request.render_preset,
+            for_gif=(request.format == "gif"),
+        )
 
         # Step 2: Render
         if request.format == "gif":
@@ -135,6 +142,7 @@ async def generate_pro(request: ProGenerateRequest):
             output_format=request.format,
             frame_duration=request.frame_duration,
             enable_research=request.enable_research,
+            render_preset=request.render_preset,
         )
 
         # Run the multi-agent pipeline
