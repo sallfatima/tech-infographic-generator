@@ -111,6 +111,8 @@ export interface Node {
   group?: string;
   zone?: string;
   size?: "small" | "medium" | "large";
+  /** Numéro d'étape ①②③ pour les flows séquentiels (SwirlAI/DailyDoseofDS style) */
+  sequence_number?: number;
 }
 
 export interface Connection {
@@ -132,6 +134,16 @@ export interface ZoneDef {
   nodes: string[];
 }
 
+/** Famille visuelle — détermine le style de rendu global */
+export type VisualFamily =
+  | "architecture"   // SwirlAI : zones imbriquées, flèches courbes, fond blanc
+  | "stacked"        // DailyDoseofDS : sections empilées, fond pastel par zone
+  | "pipeline"       // DailyDoseofDS : flux séquentiel, fond vert menthe
+  | "concept_map"    // Hub central + branches radiales
+  | "system_design"  // ByteByteGo : rectangles colorés par rôle, fond blanc clean
+  | "workflow"       // SwirlAI Agents : sous-diagrammes avec In/Out
+  | "grid";          // Roadmap/cheat sheet
+
 export interface InfographicData {
   title: string;
   subtitle?: string;
@@ -143,6 +155,10 @@ export interface InfographicData {
   color_scheme: string;
   footer?: string;
   metadata: Record<string, unknown>;
+  /** Famille visuelle — contrôle le layout et l'apparence globale */
+  visual_family?: VisualFamily;
+  /** Couleur de fond du canvas (hex). Ex: "#D4EDE8" pour DailyDoseofDS mint */
+  background_color?: string;
 }
 
 // ─── Layout helpers ─────────────────────────────────────────────────

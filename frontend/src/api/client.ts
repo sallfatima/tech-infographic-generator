@@ -35,9 +35,10 @@ export async function analyzeText(
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    const err = await res.json().catch(() => null);
+    const detail = (err as { detail?: string } | null)?.detail;
     throw new Error(
-      (err as { detail?: string }).detail ?? "Erreur analyse API",
+      detail ?? `Erreur analyse API (HTTP ${res.status})`,
     );
   }
 
@@ -69,9 +70,10 @@ export async function exportPng(
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    const err = await res.json().catch(() => null);
+    const detail = (err as { detail?: string } | null)?.detail;
     throw new Error(
-      (err as { detail?: string }).detail ?? "Erreur export PNG",
+      detail ?? `Erreur export PNG (HTTP ${res.status})`,
     );
   }
 
@@ -103,9 +105,10 @@ export async function exportGif(
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    const err = await res.json().catch(() => null);
+    const detail = (err as { detail?: string } | null)?.detail;
     throw new Error(
-      (err as { detail?: string }).detail ?? "Erreur export GIF",
+      detail ?? `Erreur export GIF (HTTP ${res.status})`,
     );
   }
 
@@ -138,9 +141,10 @@ export async function generateStandard(
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    const err = await res.json().catch(() => null);
+    const detail = (err as { detail?: string } | null)?.detail;
     throw new Error(
-      (err as { detail?: string }).detail ?? "Erreur generation standard",
+      detail ?? `Erreur generation standard (HTTP ${res.status})`,
     );
   }
 
@@ -168,9 +172,10 @@ export async function generatePro(
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    const err = await res.json().catch(() => null);
+    const detail = (err as { detail?: string } | null)?.detail;
     throw new Error(
-      (err as { detail?: string }).detail ?? "Erreur generation pro",
+      detail ?? `Erreur generation pro (HTTP ${res.status})`,
     );
   }
 

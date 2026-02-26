@@ -26,24 +26,62 @@ const GAP_Y = 40;
 // ─────────────────────────────────────────────────────────
 
 /**
- * Layout principal — dispatch vers le bon layout selon le mode.
+ * Choisit automatiquement le meilleur layout selon visual_family et type.
+ * Priorité : visual_family > type > mode manuel.
+ */
+function pickLayoutMode(
+  data: InfographicData,
+  mode: "auto" | "vertical" | "horizontal" | "radial" | "zones" = "auto",
+): "grid" | "vertical" | "horizontal" | "radial" | "zones" {
+  // Mode manuel explicite : on respecte
+  if (mode !== "auto") return mode as "grid" | "vertical" | "horizontal" | "radial" | "zones";
+
+  // Selon visual_family
+  const family = data.visual_family;
+  if (family) {
+    if (family === "stacked") return "zones";          // Sections empilées verticalement
+    if (family === "pipeline") return "zones";         // Phases horizontales avec zones
+    if (family === "architecture") return "zones";     // Zones imbriquées
+    if (family === "workflow") return "zones";         // Zones acteurs
+    if (family === "concept_map") return "radial";     // Hub + cercle
+    if (family === "system_design") return "vertical"; // Layers top-to-bottom
+    if (family === "grid") return "grid";
+  }
+
+  // Selon type Pydantic
+  const t = data.type;
+  if (t === "rag_pipeline" || t === "pipeline") return data.zones.length > 0 ? "zones" : "horizontal";
+  if (t === "architecture" || t === "multi_agent") return data.zones.length > 0 ? "zones" : "vertical";
+  if (t === "concept_map") return "radial";
+  if (t === "flowchart" || t === "process") return "horizontal";
+
+  // Fallback : zones si des zones existent, sinon grid
+  return data.zones.length > 0 ? "zones" : "grid";
+}
+
+/**
+ * Layout principal — dispatch vers le bon layout selon visual_family + mode.
  */
 export function layoutNodes(
   data: InfographicData,
   canvasW: number,
   canvasH: number,
-  mode: "auto" | "vertical" | "horizontal" | "radial" = "auto",
+  mode: "auto" | "vertical" | "horizontal" | "radial" | "zones" = "auto",
 ): LayoutResult {
   const n = data.nodes.length;
   if (n === 0) return new Map();
 
-  switch (mode) {
+  const resolved = pickLayoutMode(data, mode);
+
+  switch (resolved) {
     case "vertical":
       return layoutVertical(data, canvasW, canvasH);
     case "horizontal":
       return layoutHorizontal(data, canvasW, canvasH);
     case "radial":
       return layoutRadial(data, canvasW, canvasH);
+    case "zones":
+      return layoutZones(data, canvasW, canvasH);
     default:
       return layoutGrid(data, canvasW, canvasH);
   }
@@ -375,6 +413,159 @@ function layoutRadial(
       h: NODE_H,
     });
   });
+
+  return positions;
+}
+
+// ─────────────────────────────────────────────────────────
+// Layout : Zones (SwirlAI + DailyDoseofDS style)
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Layout zones — groupe les nodes par zone définie dans data.zones.
+ *
+ * Deux modes selon visual_family :
+ * - "stacked"  : zones empilées VERTICALEMENT (DailyDoseofDS style — 3 techniques)
+ * - autres     : zones empilées HORIZONTALEMENT par lignes (SwirlAI style — Ingestion/Query)
+ *
+ * Dans chaque zone, les nodes sont disposés en ligne horizontale.
+ * Chaque zone est une "row" visuelle avec padding interne.
+ *
+ * Si un node n'a pas de zone, il est placé dans une zone "orphelins" à la fin.
+ */
+function layoutZones(
+  data: InfographicData,
+  canvasW: number,
+  canvasH: number,
+): LayoutResult {
+  const positions: LayoutResult = new Map();
+
+  // --- Construire l'ordre des zones ---
+  const zoneNames: string[] = data.zones.map((z) => z.name ?? "");
+  const zoneNodeMap = new Map<string, string[]>(); // zoneName → nodeIds
+
+  for (const z of data.zones) {
+    zoneNodeMap.set(z.name ?? "", z.nodes ?? []);
+  }
+
+  // Nodes orphelins (sans zone ou zone inconnue)
+  const allZoneNodes = new Set(data.zones.flatMap((z) => z.nodes ?? []));
+  const orphans = data.nodes.filter((n) => !allZoneNodes.has(n.id)).map((n) => n.id);
+  if (orphans.length > 0) {
+    zoneNames.push("__orphans__");
+    zoneNodeMap.set("__orphans__", orphans);
+  }
+
+  const isStacked = data.visual_family === "stacked";
+
+  // Dimensions
+  const PAD_OUTER_X = 50;
+  const PAD_OUTER_TOP = 90;  // espace titre
+  const PAD_OUTER_BOTTOM = 30;
+  const ZONE_GAP = 24;
+  const ZONE_PAD_X = 24;
+  const ZONE_PAD_Y = 36; // extra en haut pour le titre de zone
+
+  const availW = canvasW - 2 * PAD_OUTER_X;
+  const availH = canvasH - PAD_OUTER_TOP - PAD_OUTER_BOTTOM;
+  const numZones = zoneNames.length;
+
+  if (isStacked) {
+    // ── Mode STACKED : zones empilées verticalement (DailyDoseofDS)
+    // Chaque zone = une row horizontale pleine largeur
+    const zoneH = Math.floor((availH - (numZones - 1) * ZONE_GAP) / numZones);
+
+    zoneNames.forEach((zoneName, zoneIdx) => {
+      const nodeIds = zoneNodeMap.get(zoneName) ?? [];
+      if (nodeIds.length === 0) return;
+
+      const zoneY = PAD_OUTER_TOP + zoneIdx * (zoneH + ZONE_GAP);
+      const innerW = availW - 2 * ZONE_PAD_X;
+      const innerH = zoneH - ZONE_PAD_Y - 8;
+
+      // Nodes en ligne horizontale dans la zone
+      const n = nodeIds.length;
+      const nodeW = Math.min(NODE_W, (innerW - (n - 1) * GAP_X) / n);
+      const nodeH = Math.min(NODE_H, innerH);
+      const rowW = n * nodeW + (n - 1) * GAP_X;
+      const startX = PAD_OUTER_X + ZONE_PAD_X + (innerW - rowW) / 2;
+      const nodeY = zoneY + ZONE_PAD_Y + (innerH - nodeH) / 2;
+
+      nodeIds.forEach((nodeId, i) => {
+        positions.set(nodeId, {
+          x: startX + i * (nodeW + GAP_X),
+          y: nodeY,
+          w: nodeW,
+          h: nodeH,
+        });
+      });
+    });
+
+  } else {
+    // ── Mode ZONES HORIZONTAL : zones en lignes (SwirlAI/pipeline)
+    // Chaque zone = une row. Les nodes sont disposés horizontalement dans la row.
+    // On essaie de balancer les hauteurs selon le nb de nodes par zone.
+
+    // Hauteur min par zone
+    const minZoneH = Math.max(
+      NODE_H + ZONE_PAD_Y + 20,
+      Math.floor((availH - (numZones - 1) * ZONE_GAP) / numZones)
+    );
+
+    let currentY = PAD_OUTER_TOP;
+
+    zoneNames.forEach((zoneName) => {
+      const nodeIds = zoneNodeMap.get(zoneName) ?? [];
+      if (nodeIds.length === 0) return;
+
+      const zoneH = minZoneH;
+      const innerW = availW - 2 * ZONE_PAD_X;
+      const innerH = zoneH - ZONE_PAD_Y - 8;
+
+      const n = nodeIds.length;
+      // Pour les pipelines, on veut des nodes plus larges (moins de colonnes)
+      const maxCols = Math.min(n, 5);
+      const nodeW = Math.min(NODE_W, (innerW - (maxCols - 1) * GAP_X) / maxCols);
+      const nodeH = Math.min(NODE_H, innerH);
+
+      // Si plus de maxCols nodes : plusieurs lignes dans la zone
+      const cols = Math.min(n, maxCols);
+      const rows = Math.ceil(n / cols);
+      const rowW = cols * nodeW + (cols - 1) * GAP_X;
+      const startX = PAD_OUTER_X + ZONE_PAD_X + (innerW - rowW) / 2;
+      const totalRowsH = rows * nodeH + (rows - 1) * GAP_Y;
+      const startNodeY = currentY + ZONE_PAD_Y + (innerH - totalRowsH) / 2;
+
+      nodeIds.forEach((nodeId, i) => {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        positions.set(nodeId, {
+          x: startX + col * (nodeW + GAP_X),
+          y: startNodeY + row * (nodeH + GAP_Y),
+          w: nodeW,
+          h: nodeH,
+        });
+      });
+
+      currentY += zoneH + ZONE_GAP;
+    });
+  }
+
+  // Fallback : nodes restants non placés
+  const placed = new Set(positions.keys());
+  const unplaced = data.nodes.filter((n) => !placed.has(n.id));
+  if (unplaced.length > 0) {
+    // Placer en bas du canvas
+    const fallbackY = canvasH - MARGIN_BOTTOM - NODE_H;
+    unplaced.forEach((node, i) => {
+      positions.set(node.id, {
+        x: MARGIN_X + i * (NODE_W + GAP_X),
+        y: fallbackY,
+        w: NODE_W,
+        h: NODE_H,
+      });
+    });
+  }
 
   return positions;
 }

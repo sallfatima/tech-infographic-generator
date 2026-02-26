@@ -67,12 +67,44 @@ export default function IconBadge({
     return () => { cancelled = true; };
   }, [icon]);
 
-  // Injecter le SVG content dans le <g> ref
+  // Injecter le SVG content dans le <g> ref (sécurisé via DOMParser)
   useEffect(() => {
-    if (iconGRef.current && svgContent) {
-      iconGRef.current.innerHTML = svgContent;
+    if (!iconGRef.current || !svgContent) return;
+
+    // Nettoyer le contenu précédent
+    while (iconGRef.current.firstChild) {
+      iconGRef.current.removeChild(iconGRef.current.firstChild);
     }
-  }, [svgContent]);
+
+    try {
+      // Parse le SVG de manière sécurisée (pas de scripts exécutés)
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(
+        `<svg xmlns="http://www.w3.org/2000/svg">${svgContent}</svg>`,
+        "image/svg+xml",
+      );
+
+      // Vérifier les erreurs de parsing
+      const parseError = doc.querySelector("parsererror");
+      if (parseError) {
+        console.warn(`[IconBadge] SVG parse error for "${icon}"`);
+        return;
+      }
+
+      // Supprimer tout élément <script> au cas où
+      doc.querySelectorAll("script").forEach((s) => s.remove());
+
+      // Copier les enfants validés dans le <g> ref
+      const svgRoot = doc.documentElement;
+      Array.from(svgRoot.childNodes).forEach((child) => {
+        iconGRef.current!.appendChild(
+          document.importNode(child, true),
+        );
+      });
+    } catch {
+      console.warn(`[IconBadge] Failed to parse SVG for "${icon}"`);
+    }
+  }, [svgContent, icon]);
 
   // Dimensions du SVG icon (viewBox 0 0 24 24)
   const iconSize = size * 0.9;

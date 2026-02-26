@@ -6,7 +6,8 @@
  * image preview, JSON view, dark theme).
  */
 
-import { useEffect, useState } from "react";
+import { Component, useEffect, useState } from "react";
+import type { ReactNode, ErrorInfo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDiagramState, useTemporalStore } from "./hooks/useDiagramState";
 import { useExport } from "./hooks/useExport";
@@ -17,7 +18,58 @@ import NodeEditor from "./components/Editor/NodeEditor";
 import { PipelineProgress } from "./components/Pipeline/PipelineProgress";
 import {
   LayoutDashboard, Sun, Moon, Download, Copy, Check, Sparkles, PenTool, Lightbulb,
+  AlertTriangle,
 } from "lucide-react";
+
+// ─── Error Boundary ──────────────────────────────────────────────────
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("[ErrorBoundary]", error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-red-50 dark:bg-slate-900 p-8">
+          <div className="max-w-md text-center space-y-4">
+            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto" />
+            <h1 className="text-xl font-bold text-red-700 dark:text-red-400">
+              Une erreur est survenue
+            </h1>
+            <p className="text-sm text-red-600 dark:text-red-300 bg-red-100 dark:bg-red-900/30 rounded-lg p-3 font-mono break-all">
+              {this.state.error?.message ?? "Erreur inconnue"}
+            </p>
+            <button
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                useDiagramState.getState().reset();
+              }}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium cursor-pointer"
+            >
+              Recharger l&apos;application
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 /** Exemples cliquables pour l'empty state. */
 const EXAMPLES = [
@@ -96,6 +148,7 @@ function App() {
   };
 
   return (
+    <ErrorBoundary>
     <div className={`min-h-screen flex flex-col ${darkAppTheme ? "dark" : ""}`}>
       <div className="min-h-screen flex flex-col bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors">
         {/* Header */}
@@ -148,6 +201,7 @@ function App() {
         </main>
       </div>
     </div>
+    </ErrorBoundary>
   );
 }
 

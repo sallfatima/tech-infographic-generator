@@ -89,6 +89,13 @@ class ProRenderer:
         self.theme = get_theme(theme_name)
         self.theme_name = theme_name
 
+    @staticmethod
+    def _clamp_dimensions(width: int, height: int) -> tuple[int, int]:
+        """Validate and clamp width/height to safe bounds (100–4000px)."""
+        width = max(100, min(4000, width))
+        height = max(100, min(4000, height))
+        return width, height
+
     def render(
         self,
         data: InfographicData,
@@ -101,13 +108,14 @@ class ProRenderer:
 
         Args:
             data: Structured infographic data from the LLM analyzer.
-            width: Output width in pixels.
-            height: Output height in pixels.
+            width: Output width in pixels (clamped 100–4000).
+            height: Output height in pixels (clamped 100–4000).
             output_path: Where to save. Auto-generated if None.
 
         Returns:
             Path to the saved PNG file.
         """
+        width, height = self._clamp_dimensions(width, height)
         renderer_fn = RENDERERS.get(data.type, render_infographic)
         img = renderer_fn(data, width, height, self.theme)
 
@@ -133,6 +141,7 @@ class ProRenderer:
         auto_crop: bool = True,
     ) -> Image.Image:
         """Render and return the PIL Image (no file save)."""
+        width, height = self._clamp_dimensions(width, height)
         renderer_fn = RENDERERS.get(data.type, render_infographic)
         img = renderer_fn(data, width, height, self.theme)
 

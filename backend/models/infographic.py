@@ -110,6 +110,8 @@ class Node(BaseModel):
     group: Optional[str] = Field(default=None, description="Grouping label")
     zone: Optional[str] = Field(default=None, description="Zone name for visual grouping")
     size: Optional[str] = Field(default=None, description="Node size: small/medium/large")
+    # Nouveaux champs visuels (SwirlAI + DailyDoseofDS style)
+    sequence_number: Optional[int] = Field(default=None, description="Step number ①②③ for sequential flows")
 
 
 class Connection(BaseModel):
@@ -141,3 +143,12 @@ class InfographicData(BaseModel):
     color_scheme: str = "tech_blue"
     footer: Optional[str] = None
     metadata: dict = {}
+    # Nouveaux champs visuels (SwirlAI + DailyDoseofDS + ByteByteGo style)
+    visual_family: Optional[str] = Field(
+        default=None,
+        description="Visual style family: architecture|stacked|pipeline|concept_map|system_design|workflow|grid"
+    )
+    background_color: Optional[str] = Field(
+        default=None,
+        description="Canvas background hex color (e.g. #D4EDE8 for DailyDoseofDS mint green)"
+    )

@@ -15,6 +15,7 @@ import RoughNode from "./RoughNode";
 import RoughEdge from "./RoughEdge";
 import ZoneBox from "./ZoneBox";
 import LegendBox from "./LegendBox";
+import StepNumber from "./StepNumber";
 
 /** Dimensions du canvas SVG. */
 const CANVAS_W = 1400;
@@ -63,6 +64,13 @@ export default function DiagramCanvas() {
   const updateNodeLabel = useDiagramState((s) => s.updateNodeLabel);
 
   const theme = useMemo(() => getTheme(themeName), [themeName]);
+
+  // ─── Appliquer le zoom via DOM direct (évite re-render de tous les enfants) ─
+  useEffect(() => {
+    if (svgRef.current) {
+      svgRef.current.style.transform = `scale(${zoom})`;
+    }
+  }, [zoom]);
 
   // ─── Drag state (local, pas dans le store) ───────────────────────
   const dragRef = useRef<{
@@ -182,8 +190,9 @@ export default function DiagramCanvas() {
         className="w-full h-full rounded-xl shadow-lg"
         style={{
           maxHeight: "80vh",
-          backgroundColor: theme.bg,
-          transform: `scale(${zoom})`,
+          // background_color du data prime sur le thème (DailyDoseofDS mint, etc.)
+          backgroundColor: data.background_color ?? theme.bg,
+          // zoom appliqué via useEffect DOM direct (pas de re-render)
           transformOrigin: "center center",
         }}
         onMouseMove={handleMouseMove}
@@ -335,6 +344,31 @@ export default function DiagramCanvas() {
               );
             })}
         </AnimatePresence>
+
+        {/* Badges ①②③ pour les nodes avec sequence_number (SwirlAI/DailyDoseofDS style) */}
+        {data.nodes.map((node) => {
+          if (!node.sequence_number) return null;
+          const pos = positions[node.id];
+          if (!pos) return null;
+          // Positionner le badge en coin supérieur droit du node
+          const cx = pos.x + pos.w - 14;
+          const cy = pos.y - 14;
+          // Couleur selon la zone du node
+          const zoneIdx = data.zones.findIndex((z) => z.name === node.zone);
+          const sc = theme.sectionColors[(zoneIdx >= 0 ? zoneIdx : 0) % theme.sectionColors.length];
+          return (
+            <StepNumber
+              key={`step-${node.id}`}
+              number={node.sequence_number}
+              cx={cx}
+              cy={cy}
+              bgColor="#FFFDE7"
+              borderColor={sc.border}
+              textColor={sc.border}
+              radius={13}
+            />
+          );
+        })}
 
         {/* Legende (toggle via Toolbar) */}
         {showLegend && (

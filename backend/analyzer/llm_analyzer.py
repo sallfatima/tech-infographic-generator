@@ -56,8 +56,11 @@ class LLMAnalyzer:
 
     async def _call_anthropic(self, system_prompt: str, user_prompt: str) -> str:
         import anthropic
+        import httpx
 
-        client = anthropic.AsyncAnthropic()
+        client = anthropic.AsyncAnthropic(
+            timeout=httpx.Timeout(60.0, connect=10.0),
+        )
         message = await client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=4096,
@@ -69,7 +72,7 @@ class LLMAnalyzer:
     async def _call_openai(self, system_prompt: str, user_prompt: str) -> str:
         from openai import AsyncOpenAI
 
-        client = AsyncOpenAI()
+        client = AsyncOpenAI(timeout=60.0)
         response = await client.chat.completions.create(
             model="gpt-4o",
             messages=[

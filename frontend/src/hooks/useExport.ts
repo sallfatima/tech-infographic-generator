@@ -68,9 +68,9 @@ export function useExport(): UseExportReturn {
         const blob = await exportPng(data, theme);
         downloadBlob(blob, "infographic.png");
       } catch (e) {
-        setExportError(
-          e instanceof Error ? e.message : "Erreur export PNG",
-        );
+        const msg = e instanceof Error ? e.message : "Erreur export PNG";
+        setExportError(msg);
+        throw new Error(msg); // re-throw pour que l'appelant puisse afficher un toast
       } finally {
         setIsExporting(false);
       }
@@ -87,9 +87,9 @@ export function useExport(): UseExportReturn {
         const blob = await exportGif(data, theme);
         downloadBlob(blob, "infographic.gif");
       } catch (e) {
-        setExportError(
-          e instanceof Error ? e.message : "Erreur export GIF",
-        );
+        const msg = e instanceof Error ? e.message : "Erreur export GIF";
+        setExportError(msg);
+        throw new Error(msg); // re-throw pour que l'appelant puisse afficher un toast
       } finally {
         setIsExporting(false);
       }
@@ -109,6 +109,9 @@ function downloadBlob(blob: Blob, filename: string) {
   a.download = filename;
   document.body.appendChild(a);
   a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Délai avant revocation — Chrome doit avoir le temps de lancer le dl
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 1000);
 }

@@ -20,6 +20,7 @@ import type {
   PipelineStatus,
   ViewMode,
 } from "../types/infographic";
+import { NodeShape } from "../types/infographic";
 import { analyzeText, generateStandard, generatePro } from "../api/client";
 import { layoutNodes } from "../lib/layoutEngine";
 
@@ -291,6 +292,12 @@ export const useDiagramState = create<DiagramState>()(
       updateNodeShape: (nodeId, shape) => {
         const { data } = get();
         if (!data) return;
+        // Valider que la shape est une valeur autorisée
+        const validShapes = Object.values(NodeShape) as string[];
+        if (!validShapes.includes(shape)) {
+          console.warn(`[store] Invalid shape "${shape}", ignoring`);
+          return;
+        }
         set({
           data: updateNode(data, nodeId, (n) => ({
             ...n,
