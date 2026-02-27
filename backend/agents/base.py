@@ -126,7 +126,7 @@ class BaseAgent(ABC):
         import anthropic
 
         if model is None:
-            model = "claude-sonnet-4-20250514"
+            model = "claude-haiku-4-5-20251001"
 
         client = anthropic.AsyncAnthropic()
         message = await client.messages.create(
@@ -149,7 +149,7 @@ class BaseAgent(ABC):
         from openai import AsyncOpenAI
 
         if model is None:
-            model = "gpt-4o"
+            model = "gpt-4o-mini"
 
         client = AsyncOpenAI()
         kwargs = {

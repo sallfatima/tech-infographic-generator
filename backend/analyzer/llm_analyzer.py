@@ -62,7 +62,7 @@ class LLMAnalyzer:
             timeout=httpx.Timeout(60.0, connect=10.0),
         )
         message = await client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-sonnet-4-5-20250929",
             max_tokens=4096,
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
@@ -74,7 +74,7 @@ class LLMAnalyzer:
 
         client = AsyncOpenAI(timeout=60.0)
         response = await client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
