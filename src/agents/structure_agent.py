@@ -4,7 +4,7 @@ This is Agent 2 in the pipeline. It receives the user text enriched
 with research findings and produces a validated InfographicData JSON
 structure ready for rendering.
 
-Uses Claude Sonnet 4 (same model as the original LLMAnalyzer).
+Uses Claude Sonnet 4.5 for high-quality structured JSON generation.
 """
 
 import time
@@ -61,7 +61,7 @@ class StructureAgent(BaseAgent):
             raw_json = await self.call_llm(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-5-20250929",
                 max_tokens=4096,
             )
 
@@ -124,7 +124,7 @@ class StructureAgent(BaseAgent):
             raw_json = await self.call_llm(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-5-20250929",
                 max_tokens=4096,
             )
 
